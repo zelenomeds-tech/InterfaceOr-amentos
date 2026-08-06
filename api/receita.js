@@ -27,8 +27,12 @@ module.exports = async (req, res) => {
       signal: controle.signal,
     });
     clearTimeout(timer);
-    const corpo = await r.json().catch(() => null);
-    if (!r.ok || !corpo) return json(res, 502, { ok: false, erro: 'O n8n respondeu com erro (HTTP ' + r.status + ')' });
+    const textoBruto = await r.text();
+    let corpo = null;
+    try { corpo = JSON.parse(textoBruto); } catch (e) { /* mostra o bruto abaixo */ }
+    if (!r.ok || !corpo) {
+      return json(res, 502, { ok: false, erro: 'O n8n respondeu (HTTP ' + r.status + ') mas fora do formato: "' + String(textoBruto).slice(0, 200).replace(/\s+/g, ' ') + '"' });
+    }
 
     // O n8n devolve o que a IA LEU na receita; quem decide o que libera é o
     // servidor, cruzando com o Grupo de Liberação do catálogo (regra fixa).
