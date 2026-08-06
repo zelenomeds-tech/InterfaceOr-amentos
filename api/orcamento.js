@@ -1,26 +1,79 @@
 const { CFG, sessaoDoRequest, hs, json, lerBody } = require('./_lib.js');
 
 // POST /api/orcamento
-// Corpo: { negocioId, itens: [{produtoId, nome, preco, quantidade}], frete, desconto, freteNome }
-// AGORA O ORÇAMENTO ENTRA NO NEGÓCIO QUE JÁ EXISTE:
-//  1. move o negócio para a etapa "Em Tratativa - Orçamento enviado"
-//  2. atualiza o valor (amount) para o total do orçamento
-//  3. substitui os itens de linha do negócio pelos do orçamento:
-//     produtos da biblioteca (hs_product_id), Frete e Desconto (negativo).
-//     Substituir evita duplicar itens quando o vendedor gera de novo.
+// Corpo: { negocioId, contatoId, itens: [{produtoId, nome, preco, quantidade,
+//          descontoTipo ('%'|'R$'), descontoValor}], frete, freteNome }
+// O desconto vai DENTRO do item de linha do produto (Desconto unitário do
+// HubSpot: hs_discount_percentage para %, discount para R$), e o campo
+// "Origem do Desconto" recebe "Desconto Pessoal" nos itens com desconto.
+
+// Descobre sozinho a propriedade "Origem do Desconto" e o valor interno da
+// opção "Desconto Pessoal" (dá para fixar com PROP_ORIGEM_DESCONTO e
+// VALOR_ORIGEM_DESCONTO na Vercel, se um dia precisar).
+let cacheOrigem = { quando: 0, dados: null };
+function semAcento(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+async function origemDesconto() {
+  const propEnv = (process.env.PROP_ORIGEM_DESCONTO || '').trim();
+  if (propEnv) return { prop: propEnv, valor: (process.env.VALOR_ORIGEM_DESCONTO || 'Desconto Pessoal').trim() };
+  const agora = Date.now();
+  if (cacheOrigem.dados && agora - cacheOrigem.quando < 30 * 60 * 1000) return cacheOrigem.dados;
+  let dados = null;
+  try {
+    const props = await hs('/crm/v3/properties/line_items');
+    for (const p of (props.results || [])) {
+      const rotulo = semAcento(p.label);
+      if (rotulo.includes('origem') && rotulo.includes('desconto')) {
+        const op = (p.options || []).find(o => semAcento(o.label).includes('pessoal'));
+        dados = { prop: p.name, valor: op ? op.value : 'Desconto Pessoal' };
+        break;
+      }
+    }
+  } catch { /* sem a propriedade, os descontos entram mesmo assim, só sem a origem */ }
+  cacheOrigem = { quando: agora, dados };
+  return dados;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return json(res, 405, { ok: false, erro: 'Use POST' });
   const s = sessaoDoRequest(req);
   if (!s) return json(res, 401, { ok: false, erro: 'Sessão expirada, entre de novo' });
 
-  const { negocioId, contatoId, itens, frete, desconto, freteNome } = await lerBody(req);
+  const { negocioId, contatoId, itens, frete, freteNome } = await lerBody(req);
   if (!negocioId) return json(res, 400, { ok: false, erro: 'Escolha o negócio' });
   if (!Array.isArray(itens) || !itens.length) return json(res, 400, { ok: false, erro: 'Adicione ao menos um produto' });
 
   const nFrete = Math.max(0, parseFloat(frete) || 0);
-  const nDesconto = Math.max(0, parseFloat(desconto) || 0);
-  const subtotal = itens.reduce((soma, i) => soma + (parseFloat(i.preco) || 0) * (parseInt(i.quantidade) || 1), 0);
-  const total = Math.max(0, subtotal + nFrete - nDesconto);
+  const origem = await origemDesconto();
+
+  // monta os itens já com desconto unitário e soma os totais
+  let subtotal = 0, totalDescontos = 0;
+  const propriedadesItens = itens.map(i => {
+    const qtd = parseInt(i.quantidade) || 1;
+    const preco = parseFloat(i.preco) || 0;
+    const props = {
+      hs_product_id: String(i.produtoId),
+      name: i.nome || 'Produto',
+      quantity: String(qtd),
+      price: preco.toFixed(2),
+    };
+    let descUn = 0;
+    const dv = parseFloat(i.descontoValor) || 0;
+    if (dv > 0) {
+      if (i.descontoTipo === '%') {
+        const pct = Math.min(100, dv);
+        props.hs_discount_percentage = String(pct);
+        descUn = preco * pct / 100;
+      } else {
+        descUn = Math.min(preco, dv);
+        props.discount = descUn.toFixed(2);
+      }
+      if (origem && origem.prop) props[origem.prop] = origem.valor; // Origem do Desconto = Desconto Pessoal
+    }
+    subtotal += preco * qtd;
+    totalDescontos += descUn * qtd;
+    return props;
+  });
+  const total = Math.max(0, subtotal - totalDescontos + nFrete);
   const dataBr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
   try {
@@ -48,25 +101,11 @@ module.exports = async (req, res) => {
       types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 20 }], // item de linha → negócio
     }];
 
-    const inputs = itens.map(i => ({
-      properties: {
-        hs_product_id: String(i.produtoId),
-        name: i.nome || 'Produto',
-        quantity: String(parseInt(i.quantidade) || 1),
-        price: (parseFloat(i.preco) || 0).toFixed(2),
-      },
-      associations: assoc,
-    }));
+    const inputs = propriedadesItens.map(props => ({ properties: props, associations: assoc }));
 
     if (nFrete > 0) {
       inputs.push({
         properties: { name: String(freteNome || 'Frete').slice(0, 100), quantity: '1', price: nFrete.toFixed(2) },
-        associations: assoc,
-      });
-    }
-    if (nDesconto > 0) {
-      inputs.push({
-        properties: { name: 'Desconto', quantity: '1', price: (-nDesconto).toFixed(2) },
         associations: assoc,
       });
     }
@@ -135,7 +174,7 @@ module.exports = async (req, res) => {
       negocioId: String(negocioId),
       numero: String(negocioId),
       data: dataBr,
-      subtotal, frete: nFrete, desconto: nDesconto, total,
+      subtotal, descontos: totalDescontos, frete: nFrete, total,
       linkHubspot, avisoOrcamento,
     });
   } catch (e) {
