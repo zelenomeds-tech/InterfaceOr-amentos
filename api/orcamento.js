@@ -1,53 +1,50 @@
 const { CFG, sessaoDoRequest, hs, json, lerBody } = require('./_lib.js');
 
 // POST /api/orcamento
-// Corpo: { clienteId, itens: [{produtoId, nome, preco, quantidade}], frete, desconto }
-// Cria o negócio na etapa "Em Tratativa - Orçamento enviado" da Pipeline de
-// vendas e recompra, associa o contato e cria os itens de linha no HubSpot:
-// cada produto (com hs_product_id, igual está lá), Frete como item de linha
-// e Desconto como item de linha com valor negativo.
+// Corpo: { negocioId, itens: [{produtoId, nome, preco, quantidade}], frete, desconto, freteNome }
+// AGORA O ORÇAMENTO ENTRA NO NEGÓCIO QUE JÁ EXISTE:
+//  1. move o negócio para a etapa "Em Tratativa - Orçamento enviado"
+//  2. atualiza o valor (amount) para o total do orçamento
+//  3. substitui os itens de linha do negócio pelos do orçamento:
+//     produtos da biblioteca (hs_product_id), Frete e Desconto (negativo).
+//     Substituir evita duplicar itens quando o vendedor gera de novo.
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return json(res, 405, { ok: false, erro: 'Use POST' });
   const s = sessaoDoRequest(req);
   if (!s) return json(res, 401, { ok: false, erro: 'Sessão expirada, entre de novo' });
 
-  const { clienteId, clienteNome, itens, frete, desconto, freteNome } = await lerBody(req);
-  if (!clienteId) return json(res, 400, { ok: false, erro: 'Escolha o cliente' });
+  const { negocioId, itens, frete, desconto, freteNome } = await lerBody(req);
+  if (!negocioId) return json(res, 400, { ok: false, erro: 'Escolha o negócio' });
   if (!Array.isArray(itens) || !itens.length) return json(res, 400, { ok: false, erro: 'Adicione ao menos um produto' });
 
   const nFrete = Math.max(0, parseFloat(frete) || 0);
   const nDesconto = Math.max(0, parseFloat(desconto) || 0);
   const subtotal = itens.reduce((soma, i) => soma + (parseFloat(i.preco) || 0) * (parseInt(i.quantidade) || 1), 0);
   const total = Math.max(0, subtotal + nFrete - nDesconto);
-
   const dataBr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
   try {
-    // 1) Cria o negócio já associado ao contato
-    const propsNegocio = {
-      dealname: `Orçamento - ${clienteNome || 'Cliente'} - ${dataBr}`,
-      pipeline: CFG.pipeline,
-      dealstage: CFG.etapaOrcamento,
-      amount: total.toFixed(2),
-    };
-    if (s.ownerId) propsNegocio.hubspot_owner_id = s.ownerId;
-    if (CFG.origemValor) propsNegocio.origem = CFG.origemValor;
-
-    const negocio = await hs('/crm/v3/objects/deals', {
-      method: 'POST',
+    // 1) Move o negócio para a etapa do orçamento e atualiza o valor
+    await hs('/crm/v3/objects/deals/' + encodeURIComponent(negocioId), {
+      method: 'PATCH',
       body: JSON.stringify({
-        properties: propsNegocio,
-        associations: [{
-          to: { id: String(clienteId) },
-          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 3 }], // negócio → contato
-        }],
+        properties: { dealstage: CFG.etapaOrcamento, amount: total.toFixed(2) },
       }),
     });
-    const negocioId = String(negocio.id);
 
-    // 2) Cria os itens de linha em lote, já associados ao negócio
+    // 2) Remove os itens de linha antigos do negócio (evita duplicar ao regerar)
+    const antigos = await hs('/crm/v3/objects/deals/' + encodeURIComponent(negocioId) + '/associations/line_items');
+    const idsAntigos = (antigos.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean);
+    if (idsAntigos.length) {
+      await hs('/crm/v3/objects/line_items/batch/archive', {
+        method: 'POST',
+        body: JSON.stringify({ inputs: idsAntigos.map(id => ({ id })) }),
+      });
+    }
+
+    // 3) Cria os itens de linha novos, associados ao negócio
     const assoc = [{
-      to: { id: negocioId },
+      to: { id: String(negocioId) },
       types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 20 }], // item de linha → negócio
     }];
 
@@ -81,8 +78,8 @@ module.exports = async (req, res) => {
 
     return json(res, 200, {
       ok: true,
-      negocioId,
-      numero: negocioId, // número do orçamento mostrado no documento
+      negocioId: String(negocioId),
+      numero: String(negocioId),
       data: dataBr,
       subtotal, frete: nFrete, desconto: nDesconto, total,
     });
