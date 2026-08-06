@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
 
   const corpo = {
     filterGroups: [{ filters: filtros }],
-    properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', CFG.propCpf],
+    properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'zip', 'city', 'state', CFG.propCpf],
     sorts: [{ propertyName: 'lastmodifieddate', direction: 'DESCENDING' }],
     limit: 100,
   };
@@ -36,6 +36,8 @@ module.exports = async (req, res) => {
         email: p.email || '',
         telefone: p.phone || p.mobilephone || '',
         cpf: p[CFG.propCpf] || '',
+        cep: p.zip || '',
+        cidade: p.city || '',
       };
     });
     return json(res, 200, { ok: true, total: r.total || clientes.length, clientes });
