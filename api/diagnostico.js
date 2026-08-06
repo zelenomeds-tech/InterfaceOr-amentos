@@ -1,4 +1,4 @@
-const { USUARIOS, CFG, hs, ownerPorEmail, json } = require('./_lib.js');
+const { USUARIOS, CFG, hs, ownerPorEmail, json, catalogoProdutos } = require('./_lib.js');
 
 // GET /api/diagnostico — abre no navegador para conferir a instalação.
 // Mostra: variáveis, conexão com o HubSpot, quais e-mails da lista de login
@@ -26,6 +26,20 @@ module.exports = async (req, res) => {
         }
       }
       saida.hubspot.conectado = true;
+
+      // Catálogo: Status e Grupo de Liberação detectados + contagens
+      try {
+        const { produtos, propStatus, propGrupo } = await catalogoProdutos();
+        saida.catalogo = {
+          propriedadeStatus: propStatus || '⚠️ não encontrada (todos os produtos aparecem)',
+          propriedadeGrupo: propGrupo || '⚠️ não encontrada (nenhum produto casa com a receita)',
+          ativos: produtos.filter(p => p.ativo).length,
+          inativosOuSemStatus: produtos.filter(p => !p.ativo).length,
+          ativosSemGrupo: produtos.filter(p => p.ativo && !p.categoria).map(p => p.nome),
+        };
+      } catch (e) {
+        saida.catalogo = 'erro: ' + e.message;
+      }
 
       // Propriedade "Origem do Desconto" dos itens de linha
       try {
