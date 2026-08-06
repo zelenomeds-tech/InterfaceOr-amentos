@@ -571,6 +571,8 @@ async function carregarReceita(forcar) {
       status: 'ok',
       liberados: new Set((j.liberados || []).map(l => String(l.id))),
       motivos: Object.fromEntries((j.liberados || []).map(l => [String(l.id), l.motivo || ''])),
+      info: Object.fromEntries((j.liberados || []).map(l => [String(l.id), { grupo: l.grupo || '', gPorUn: Number(l.gramasPorUnidade) > 0 ? Number(l.gramasPorUnidade) : 5 }])),
+      grupos: Object.fromEntries((j.grupos || []).map(g => [String(g.chave || ''), { gramas: (g.gramas === null || g.gramas === undefined) ? null : Number(g.gramas), descricao: g.descricao || '', periodo: g.periodo || '' }])),
       resumo: j.resumo || '', validaAte: j.validaAte || null,
       receitaVencida: !!j.receitaVencida, observacoes: j.observacoes || '',
     };
@@ -591,6 +593,29 @@ function produtoLiberado(p) {
   if (r.status === 'sem') return false;       // sem receita anexada: nada liberado
   if (r.receitaVencida) return false;
   return r.liberados.has(p.id);
+}
+
+// gramas já no carrinho para o grupo daquele produto (soma todos os produtos do grupo)
+function gramasNoGrupo(chave) {
+  const r = estado.receita;
+  if (!r || !r.info) return 0;
+  let soma = 0;
+  for (const [id, q] of estado.carrinho) {
+    const inf = r.info[id];
+    if (inf && inf.grupo === chave) soma += inf.gPorUn * q;
+  }
+  return soma;
+}
+
+// dá para adicionar mais 1 unidade deste produto sem estourar a receita?
+function podeAdicionarMais(p) {
+  const r = estado.receita;
+  if (!r || r.status !== 'ok' || !r.info) return true;
+  const inf = r.info[p.id];
+  if (!inf || !inf.grupo) return true;
+  const grupo = r.grupos && r.grupos[inf.grupo];
+  if (!grupo || grupo.gramas === null || !(grupo.gramas > 0)) return true; // receita sem limite de quantidade
+  return gramasNoGrupo(inf.grupo) + inf.gPorUn <= grupo.gramas;
 }
 
 function desenharBannerReceita() {
@@ -637,6 +662,7 @@ function desenharProdutos(filtro) {
     const qtd = estado.carrinho.get(p.id) || 0;
     const liberado = produtoLiberado(p);
     const lendo = estado.receita === null;
+    const cabeMais = podeAdicionarMais(p);
     return `
     <div class="prod ${qtd ? 'noCarrinho' : ''} ${liberado ? '' : 'bloqueado'}" data-id="${p.id}">
       <div class="foto">${p.foto ? `<img src="${escapeHtml(p.foto)}" alt="" loading="lazy" onerror="this.remove()">` : semFotoSvg()}</div>
@@ -646,15 +672,19 @@ function desenharProdutos(filtro) {
         ${!liberado
           ? `<div class="rotuloBloq">${lendo ? 'Conferindo receita…' : 'Não consta na receita'}</div>`
           : qtd
-            ? `<div class="stepper"><button data-acao="menos">−</button><span class="qtd">${qtd}</span><button data-acao="mais">+</button></div>`
-            : `<button class="btnAdd" data-acao="add">Adicionar</button>`}
+            ? `<div class="stepper"><button data-acao="menos">−</button><span class="qtd">${qtd}</span><button data-acao="mais" ${cabeMais ? '' : 'disabled title="Limite da receita atingido"'}>+</button></div>`
+            : cabeMais
+              ? `<button class="btnAdd" data-acao="add">Adicionar</button>`
+              : `<div class="rotuloBloq">Limite da receita atingido</div>`}
       </div>
     </div>`;
   }).join('');
   grade.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', ev => {
     const id = ev.target.closest('.prod').dataset.id;
+    const p = estado.produtos.find(x => x.id === id);
     const atual = estado.carrinho.get(id) || 0;
     const acao = ev.target.dataset.acao;
+    if ((acao === 'add' || acao === 'mais') && p && !podeAdicionarMais(p)) return; // segurança extra
     if (acao === 'add' || acao === 'mais') estado.carrinho.set(id, atual + 1);
     if (acao === 'menos') { if (atual <= 1) estado.carrinho.delete(id); else estado.carrinho.set(id, atual - 1); }
     desenharProdutos(filtro);
