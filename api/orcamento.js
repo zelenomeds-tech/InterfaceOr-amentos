@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
   const s = sessaoDoRequest(req);
   if (!s) return json(res, 401, { ok: false, erro: 'Sessão expirada, entre de novo' });
 
-  const { clienteId, clienteNome, itens, frete, desconto } = await lerBody(req);
+  const { clienteId, clienteNome, itens, frete, desconto, freteNome } = await lerBody(req);
   if (!clienteId) return json(res, 400, { ok: false, erro: 'Escolha o cliente' });
   if (!Array.isArray(itens) || !itens.length) return json(res, 400, { ok: false, erro: 'Adicione ao menos um produto' });
 
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
 
     if (nFrete > 0) {
       inputs.push({
-        properties: { name: 'Frete', quantity: '1', price: nFrete.toFixed(2) },
+        properties: { name: String(freteNome || 'Frete').slice(0, 100), quantity: '1', price: nFrete.toFixed(2) },
         associations: assoc,
       });
     }
