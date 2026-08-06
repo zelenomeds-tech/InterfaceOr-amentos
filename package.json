@@ -1,0 +1,6 @@
+{
+  "name": "orcamento-zeleno",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Gerador de orçamentos Zeleno — vendedores logam, escolhem cliente e produtos do HubSpot, e o negócio é criado com itens de linha"
+}
