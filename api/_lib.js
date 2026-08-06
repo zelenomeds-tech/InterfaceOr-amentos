@@ -146,16 +146,25 @@ async function propsProduto() {
   if (cachePropsProduto.dados && agora - cachePropsProduto.quando < 30 * 60 * 1000) return cachePropsProduto.dados;
   let propStatus = (process.env.PROP_STATUS_PRODUTO || '').trim();
   let propGrupo = (process.env.PROP_GRUPO_LIBERACAO || '').trim();
-  if (!propStatus || !propGrupo) {
-    const r = await hs('/crm/v3/properties/products');
-    for (const p of (r.results || [])) {
-      const rot = normTexto(p.label);
-      if (!propStatus && rot === 'status') propStatus = p.name;
-      if (!propGrupo && rot.includes('grupo') && rot.includes('libera')) propGrupo = p.name;
-    }
-    if (!propStatus) for (const p of (r.results || [])) { if (normTexto(p.label).includes('status')) { propStatus = p.name; break; } }
+  let valorAtivo = (process.env.VALOR_STATUS_ATIVO || '').trim();
+  const r = await hs('/crm/v3/properties/products');
+  const todas = r.results || [];
+  if (!propStatus) {
+    const exata = todas.find(p => normTexto(p.label) === 'status');
+    const parcial = todas.find(p => normTexto(p.label).includes('status'));
+    propStatus = (exata || parcial || {}).name || '';
   }
-  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo } };
+  if (!propGrupo) {
+    const g = todas.find(p => normTexto(p.label).includes('grupo') && normTexto(p.label).includes('libera'));
+    propGrupo = (g || {}).name || '';
+  }
+  // valor interno da opção "Ativo" (o rótulo pode ser Ativo e o valor interno outra coisa)
+  if (propStatus && !valorAtivo) {
+    const p = todas.find(x => x.name === propStatus);
+    const op = ((p && p.options) || []).find(o => normTexto(o.label).includes('ativo') && !normTexto(o.label).includes('inativo'));
+    valorAtivo = op ? String(op.value) : 'ativo';
+  }
+  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo, valorAtivo } };
   return cachePropsProduto.dados;
 }
 
@@ -165,7 +174,7 @@ let cacheCatalogo = { quando: 0, dados: null };
 async function catalogoProdutos() {
   const agora = Date.now();
   if (cacheCatalogo.dados && agora - cacheCatalogo.quando < 10 * 60 * 1000) return cacheCatalogo.dados;
-  const { propStatus, propGrupo } = await propsProduto();
+  const { propStatus, propGrupo, valorAtivo } = await propsProduto();
   const propriedades = ['name', 'price', 'description', 'hs_sku', 'hs_images'];
   if (propStatus) propriedades.push(propStatus);
   if (propGrupo) propriedades.push(propGrupo);
@@ -186,7 +195,9 @@ async function catalogoProdutos() {
         sku: p.hs_sku || '',
         descricao: p.description || '',
         foto: (p.hs_images || '').split(';')[0].trim(),
-        ativo: propStatus ? statusVal === 'ativo' : true, // só Status = Ativo aparece
+        statusBruto: propStatus ? String(p[propStatus] || '') : '',
+        // ativo se bater com o valor interno da opção Ativo OU com o texto "ativo"
+        ativo: propStatus ? (String(p[propStatus] || '') === valorAtivo || statusVal === 'ativo') : true,
         grupo,
         categoria: grupo.includes('FLOR') ? 'flor' : grupo.includes('EXTRATO') ? 'extrato' : grupo.includes('OLEO') ? 'oleo' : null,
         dominancia: grupo.includes('_CBD') ? 'CBD' : grupo.includes('_THC') ? 'THC' : null,
@@ -196,7 +207,7 @@ async function catalogoProdutos() {
     after = pag.paging?.next?.after || '';
   } while (after);
   produtos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  cacheCatalogo = { quando: agora, dados: { produtos, propStatus, propGrupo } };
+  cacheCatalogo = { quando: agora, dados: { produtos, propStatus, propGrupo, valorAtivo } };
   return cacheCatalogo.dados;
 }
 
