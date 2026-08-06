@@ -27,6 +27,15 @@ module.exports = async (req, res) => {
       }
       saida.hubspot.conectado = true;
 
+      // Modelos de orçamento (para a variável MODELO_ORCAMENTO_ID, se quiser fixar um)
+      try {
+        const modelos = await hs('/crm/v3/objects/quote_template?limit=10&properties=hs_name');
+        saida.modelosOrcamento = (modelos.results || []).map(m => ({ id: String(m.id), nome: m.properties?.hs_name || '' }));
+        saida.modeloEmUso = (process.env.MODELO_ORCAMENTO_ID || '').trim() || (saida.modelosOrcamento[0] ? saida.modelosOrcamento[0].id + ' (primeiro da lista, padrão)' : 'nenhum encontrado');
+      } catch (e) {
+        saida.modelosOrcamento = 'erro ao listar: ' + e.message + ' — confira se o token tem o escopo de orçamentos (quotes)';
+      }
+
       // Confere quais e-mails do login existem como owner
       for (const u of USUARIOS) {
         let owner = null;
