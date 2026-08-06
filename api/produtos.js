@@ -10,10 +10,17 @@ module.exports = async (req, res) => {
 
   try {
     const { produtos } = await catalogoProdutos();
-    const ativos = produtos
-      .filter(p => p.ativo)
-      .map(({ id, nome, preco, sku, descricao, foto }) => ({ id, nome, preco, sku, descricao, foto }));
-    return json(res, 200, { ok: true, produtos: ativos });
+    const ativos = produtos.filter(p => p.ativo);
+    // Válvula de segurança: se o filtro de Status zerar um catálogo que existe,
+    // é sinal de propriedade/valor errado — mostra todos em vez de travar a
+    // operação, e o /api/diagnostico aponta o ajuste (PROP_STATUS_PRODUTO /
+    // VALOR_STATUS_ATIVO na Vercel).
+    const lista = (ativos.length === 0 && produtos.length > 0) ? produtos : ativos;
+    return json(res, 200, {
+      ok: true,
+      filtroAtivoFalhou: ativos.length === 0 && produtos.length > 0,
+      produtos: lista.map(({ id, nome, preco, sku, descricao, foto }) => ({ id, nome, preco, sku, descricao, foto })),
+    });
   } catch (e) {
     return json(res, 502, { ok: false, erro: e.message });
   }
