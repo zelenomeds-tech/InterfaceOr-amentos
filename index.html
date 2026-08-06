@@ -119,6 +119,17 @@ img{display:block}
 @media(max-width:560px){.gradeFicha{grid-template-columns:1fr}}
 
 /* produtos */
+/* receita */
+.receitaBanner{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:14px;line-height:1.45;border:1.5px solid}
+.receitaBanner.lendo{background:#F3F6F2;border-color:var(--linha);color:var(--tinta-2)}
+.receitaBanner.ok{background:var(--brotinho);border-color:var(--folha);color:var(--mata)}
+.receitaBanner.bloq{background:#FBEDEA;border-color:#E7B8AF;color:var(--erro)}
+.receitaBanner.alerta{background:#FBF4E4;border-color:#E4CE96;color:#7A5B12}
+.receitaBanner b{font-weight:700}
+.receitaBanner .reler{background:none;border:none;padding:0;font-size:13px;text-decoration:underline;color:inherit;margin-left:6px}
+.prod.bloqueado{opacity:.55}
+.prod.bloqueado .foto img{filter:grayscale(1)}
+.rotuloBloq{height:38px;display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--linha);border-radius:10px;font-size:12px;font-weight:700;color:var(--tinta-2);text-align:center;padding:0 6px}
 .gradeProdutos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
 .prod{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s}
 .prod.noCarrinho{border-color:var(--folha)}
@@ -311,6 +322,7 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
   <div class="conteudo escondido" id="passoProdutos">
     <h2 class="tituloSecao">Produtos</h2>
     <p class="subSecao">Preços e fotos direto do HubSpot.</p>
+    <div id="receitaBanner" class="receitaBanner escondido"></div>
     <div class="buscaLinha">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="buscaProduto" type="search" placeholder="Buscar produto">
@@ -400,6 +412,7 @@ const estado = {
   produtos: [],
   carrinho: new Map(),  // produtoId -> quantidade
   descontos: new Map(), // produtoId -> { tipo: '%' | 'R$', valor: number }
+  receita: null,        // null=carregando · {status:'ok'|'sem'|'erro', liberados:Set, ...}
   passo: 1,
 };
 
@@ -528,14 +541,81 @@ function escolherNegocio(contatoId, negocioId) {
   const c = estado.clientes.find(x => x.id === contatoId);
   const n = (estado.negociosDoContato.get(contatoId) || []).find(x => x.id === negocioId);
   if (!c || !n) return;
+  const trocouCliente = !estado.contatoSel || estado.contatoSel.id !== contatoId;
   estado.contatoSel = c;
   estado.negocioSel = n;
+  if (trocouCliente) {
+    estado.carrinho.clear();
+    estado.descontos.clear();
+    carregarReceita(false);
+  }
   document.querySelectorAll('.negLinha').forEach(el => el.classList.toggle('sel', el.dataset.id === negocioId));
   $('#fichaCliente').classList.remove('escondido');
   $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
   $('#fCep').value = mascaraCep(c.cep || '');
   atualizarCupom();
   $('#fichaCliente').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ---------- receita ---------- */
+async function carregarReceita(forcar) {
+  estado.receita = null; // carregando
+  desenharBannerReceita();
+  desenharProdutos($('#buscaProduto').value.trim().toLowerCase());
+  const j = await api('/api/receita?contato=' + estado.contatoSel.id
+    + '&negocio=' + (estado.negocioSel ? estado.negocioSel.id : '')
+    + (forcar ? '&forcar=1' : ''));
+  if (j.ok && j.status === 'ok') {
+    estado.receita = {
+      status: 'ok',
+      liberados: new Set((j.liberados || []).map(l => String(l.id))),
+      motivos: Object.fromEntries((j.liberados || []).map(l => [String(l.id), l.motivo || ''])),
+      resumo: j.resumo || '', validaAte: j.validaAte || null,
+      receitaVencida: !!j.receitaVencida, observacoes: j.observacoes || '',
+    };
+  } else if (j.ok && j.status === 'sem') {
+    estado.receita = { status: 'sem', liberados: new Set(), resumo: j.resumo || '' };
+  } else {
+    estado.receita = { status: 'erro', liberados: new Set(), erro: j.erro || 'Falha ao ler a receita' };
+  }
+  desenharBannerReceita();
+  desenharProdutos($('#buscaProduto').value.trim().toLowerCase());
+}
+
+function produtoLiberado(p) {
+  if (!estado.contatoSel) return true;        // sem cliente escolhido, grade neutra
+  const r = estado.receita;
+  if (!r) return false;                       // ainda lendo: segura
+  if (r.status === 'erro') return true;       // falha técnica não trava a venda (o banner avisa)
+  if (r.status === 'sem') return false;       // sem receita anexada: nada liberado
+  if (r.receitaVencida) return false;
+  return r.liberados.has(p.id);
+}
+
+function desenharBannerReceita() {
+  const b = $('#receitaBanner');
+  const r = estado.receita;
+  if (!estado.contatoSel) { b.classList.add('escondido'); return; }
+  b.classList.remove('escondido');
+  const reler = ' <button class="reler" onclick="carregarReceita(true)">reler receita</button>';
+  if (r === null) {
+    b.className = 'receitaBanner lendo';
+    b.innerHTML = '⏳ Lendo a receita anexada de ' + escapeHtml(estado.contatoSel.nome.split(' ')[0]) + '… (só na primeira vez, depois fica salvo)';
+  } else if (r.status === 'ok' && r.receitaVencida) {
+    b.className = 'receitaBanner bloq';
+    b.innerHTML = '<b>Receita vencida.</b> Nenhum produto liberado — peça uma receita nova ao cliente.' + reler;
+  } else if (r.status === 'ok') {
+    b.className = 'receitaBanner ok';
+    b.innerHTML = '<b>Receita conferida:</b> ' + escapeHtml(r.resumo)
+      + (r.validaAte ? ' · válida até ' + r.validaAte.split('-').reverse().join('/') : '')
+      + (r.observacoes ? '<br><small>' + escapeHtml(r.observacoes) + '</small>' : '') + reler;
+  } else if (r.status === 'sem') {
+    b.className = 'receitaBanner bloq';
+    b.innerHTML = '<b>Sem receita anexada.</b> Anexe a receita no contato ou no negócio do HubSpot para liberar os produtos.' + reler;
+  } else {
+    b.className = 'receitaBanner alerta';
+    b.innerHTML = '<b>Não consegui conferir a receita</b> (' + escapeHtml(r.erro) + '). Os produtos estão liberados — confira a receita manualmente.' + reler;
+  }
 }
 
 /* ---------- produtos ---------- */
@@ -554,15 +634,19 @@ function desenharProdutos(filtro) {
   if (!lista.length) { grade.innerHTML = '<div class="vazio">Nenhum produto com esse nome.</div>'; return; }
   grade.innerHTML = lista.map(p => {
     const qtd = estado.carrinho.get(p.id) || 0;
+    const liberado = produtoLiberado(p);
+    const lendo = estado.receita === null;
     return `
-    <div class="prod ${qtd ? 'noCarrinho' : ''}" data-id="${p.id}">
+    <div class="prod ${qtd ? 'noCarrinho' : ''} ${liberado ? '' : 'bloqueado'}" data-id="${p.id}">
       <div class="foto">${p.foto ? `<img src="${escapeHtml(p.foto)}" alt="" loading="lazy" onerror="this.remove()">` : semFotoSvg()}</div>
       <div class="corpo">
         <div class="nome">${escapeHtml(p.nome)}</div>
         <div class="preco">${brl(p.preco)}</div>
-        ${qtd
-          ? `<div class="stepper"><button data-acao="menos">−</button><span class="qtd">${qtd}</span><button data-acao="mais">+</button></div>`
-          : `<button class="btnAdd" data-acao="add">Adicionar</button>`}
+        ${!liberado
+          ? `<div class="rotuloBloq">${lendo ? 'Conferindo receita…' : 'Não consta na receita'}</div>`
+          : qtd
+            ? `<div class="stepper"><button data-acao="menos">−</button><span class="qtd">${qtd}</span><button data-acao="mais">+</button></div>`
+            : `<button class="btnAdd" data-acao="add">Adicionar</button>`}
       </div>
     </div>`;
   }).join('');
@@ -864,6 +948,7 @@ $('#btnNovoOrc').addEventListener('click', () => {
   $('#telaDoc').classList.add('escondido');
   estado.carrinho.clear();
   estado.descontos.clear();
+  estado.receita = null;
   estado.negocioSel = null;
   estado.contatoSel = null;
   estado.negociosDoContato.clear();
@@ -874,6 +959,7 @@ $('#btnNovoOrc').addEventListener('click', () => {
   document.querySelectorAll('input[name="tipoFrete"]').forEach(r => r.checked = false);
   $('#buscaCliente').value = ''; $('#buscaProduto').value = '';
   desenharProdutos('');
+  desenharBannerReceita();
   carregarClientes('');
   irParaPasso(1);
 });
