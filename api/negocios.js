@@ -1,13 +1,14 @@
 const { CFG, sessaoDoRequest, hs, json } = require('./_lib.js');
 
-// GET /api/negocios?busca=texto
-// Lista os negócios do vendedor logado na Pipeline de vendas e recompra,
-// nas etapas de pré-venda (antes do pagamento), com o cliente associado.
-// Admin enxerga os negócios de todos.
+// GET /api/negocios?contato=ID
+// Lista TODOS os negócios daquele contato, com pipeline e etapa.
+// "selecionavel" marca em quais dá para lançar orçamento: os da Pipeline de
+// vendas e recompra que ainda estão ANTES do pagamento. Negócios já pagos /
+// enviados / entregues aparecem na lista, mas travados — mover um pedido pago
+// de volta para "Orçamento enviado" bagunçaria o funil e os painéis.
 
-// Etapas onde faz sentido gerar orçamento (antes do pagamento).
-// Pode trocar sem mexer no código: variável ETAPAS_LISTA na Vercel,
-// com os ids separados por vírgula.
+// Etapas de pré-venda (antes do pagamento). Pode trocar sem mexer no código:
+// variável ETAPAS_LISTA na Vercel, ids separados por vírgula.
 const ETAPAS_PADRAO = [
   '1173938946', // Oportunidade qualificada - Consulta realizada
   '1173938945', // Nova Oportunidade De Recompra
@@ -17,101 +18,66 @@ const ETAPAS_PADRAO = [
   '1173938948', // Link de Pagamento
 ];
 
-let cacheEtapas = { quando: 0, rotulos: null };
-async function rotulosEtapas() {
+let cachePipes = { quando: 0, etapas: null, pipelines: null };
+async function mapas() {
   const agora = Date.now();
-  if (!cacheEtapas.rotulos || agora - cacheEtapas.quando > 30 * 60 * 1000) {
-    const mapa = {};
+  if (!cachePipes.etapas || agora - cachePipes.quando > 30 * 60 * 1000) {
+    const etapas = {}, pipelines = {};
     const pipes = await hs('/crm/v3/pipelines/deals');
-    for (const p of (pipes.results || []))
-      for (const e of (p.stages || [])) mapa[String(e.id)] = e.label;
-    cacheEtapas = { quando: agora, rotulos: mapa };
+    for (const p of (pipes.results || [])) {
+      pipelines[String(p.id)] = p.label;
+      for (const e of (p.stages || [])) etapas[String(e.id)] = e.label;
+    }
+    cachePipes = { quando: agora, etapas, pipelines };
   }
-  return cacheEtapas.rotulos;
+  return cachePipes;
 }
 
 module.exports = async (req, res) => {
   const s = sessaoDoRequest(req);
   if (!s) return json(res, 401, { ok: false, erro: 'Sessão expirada, entre de novo' });
-  if (s.papel !== 'admin' && !s.ownerId) {
-    return json(res, 400, { ok: false, erro: 'Seu e-mail não foi encontrado como usuário do HubSpot. Confira em /api/diagnostico.' });
-  }
 
   const url = new URL(req.url, 'http://x');
-  const busca = (url.searchParams.get('busca') || '').trim();
-  const etapas = (process.env.ETAPAS_LISTA || '').split(',').map(t => t.trim()).filter(Boolean);
-  const listaEtapas = etapas.length ? etapas : ETAPAS_PADRAO;
+  const contato = (url.searchParams.get('contato') || '').trim();
+  if (!/^\d+$/.test(contato)) return json(res, 400, { ok: false, erro: 'Informe o contato' });
 
-  const filtros = [
-    { propertyName: 'pipeline', operator: 'EQ', value: CFG.pipeline },
-    { propertyName: 'dealstage', operator: 'IN', values: listaEtapas },
-  ];
-  if (s.papel !== 'admin') filtros.push({ propertyName: 'hubspot_owner_id', operator: 'EQ', value: s.ownerId });
-
-  const corpo = {
-    filterGroups: [{ filters: filtros }],
-    properties: ['dealname', 'dealstage', 'amount', 'createdate'],
-    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
-    limit: 100,
-  };
-  if (busca) corpo.query = busca;
+  const etapasEnv = (process.env.ETAPAS_LISTA || '').split(',').map(t => t.trim()).filter(Boolean);
+  const preVenda = new Set(etapasEnv.length ? etapasEnv : ETAPAS_PADRAO);
 
   try {
-    const r = await hs('/crm/v3/objects/deals/search', { method: 'POST', body: JSON.stringify(corpo) });
-    const negocios = (r.results || []).map(n => ({
-      id: String(n.id),
-      nome: n.properties?.dealname || '(sem nome)',
-      etapaId: String(n.properties?.dealstage || ''),
-      criadoEm: n.properties?.createdate || '',
-    }));
+    const assoc = await hs('/crm/v3/objects/contacts/' + contato + '/associations/deals');
+    const ids = (assoc.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean);
+    if (!ids.length) return json(res, 200, { ok: true, negocios: [] });
 
-    // Associa cada negócio ao contato (cliente) dele
-    const clientesPorNegocio = {};
-    if (negocios.length) {
-      const assoc = await hs('/crm/v3/associations/deals/contacts/batch/read', {
-        method: 'POST',
-        body: JSON.stringify({ inputs: negocios.map(n => ({ id: n.id })) }),
-      });
-      const idsContatos = new Set();
-      const contatoDoNegocio = {};
-      for (const a of (assoc.results || [])) {
-        const primeiro = (a.to || [])[0];
-        if (primeiro) { contatoDoNegocio[String(a.from.id)] = String(primeiro.id); idsContatos.add(String(primeiro.id)); }
-      }
-      if (idsContatos.size) {
-        const contatos = await hs('/crm/v3/objects/contacts/batch/read', {
-          method: 'POST',
-          body: JSON.stringify({
-            inputs: [...idsContatos].map(id => ({ id })),
-            properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'zip', 'city', CFG.propCpf],
-          }),
-        });
-        const porId = {};
-        for (const c of (contatos.results || [])) {
-          const p = c.properties || {};
-          porId[String(c.id)] = {
-            id: String(c.id),
-            nome: [p.firstname, p.lastname].filter(Boolean).join(' ') || '(sem nome)',
-            email: p.email || '',
-            telefone: p.phone || p.mobilephone || '',
-            cpf: p[CFG.propCpf] || '',
-            cep: p.zip || '',
-          };
-        }
-        for (const [negId, ctId] of Object.entries(contatoDoNegocio)) {
-          if (porId[ctId]) clientesPorNegocio[negId] = porId[ctId];
-        }
-      }
-    }
+    const lidos = await hs('/crm/v3/objects/deals/batch/read', {
+      method: 'POST',
+      body: JSON.stringify({
+        inputs: ids.map(id => ({ id })),
+        properties: ['dealname', 'dealstage', 'pipeline', 'amount', 'createdate'],
+      }),
+    });
 
-    const rotulos = await rotulosEtapas();
-    const saida = negocios.map(n => ({
-      ...n,
-      etapa: rotulos[n.etapaId] || n.etapaId,
-      cliente: clientesPorNegocio[n.id] || null,
-    }));
+    const { etapas, pipelines } = await mapas();
+    const negocios = (lidos.results || []).map(n => {
+      const p = n.properties || {};
+      const etapaId = String(p.dealstage || '');
+      const pipeId = String(p.pipeline || '');
+      return {
+        id: String(n.id),
+        nome: p.dealname || '(sem nome)',
+        etapaId,
+        etapa: etapas[etapaId] || etapaId,
+        pipeline: pipelines[pipeId] || pipeId,
+        valor: parseFloat(p.amount) || 0,
+        criadoEm: p.createdate || '',
+        selecionavel: pipeId === CFG.pipeline && preVenda.has(etapaId),
+      };
+    });
 
-    return json(res, 200, { ok: true, total: r.total || saida.length, negocios: saida });
+    // selecionáveis primeiro, mais recentes primeiro dentro de cada grupo
+    negocios.sort((a, b) => (b.selecionavel - a.selecionavel) || String(b.criadoEm).localeCompare(String(a.criadoEm)));
+
+    return json(res, 200, { ok: true, negocios });
   } catch (e) {
     return json(res, 502, { ok: false, erro: e.message });
   }
