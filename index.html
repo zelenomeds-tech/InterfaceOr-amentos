@@ -139,6 +139,17 @@ img{display:block}
 .itemRev .meio span{font-size:13px;color:var(--tinta-2)}
 .itemRev .valor{font-weight:700;font-size:14px;white-space:nowrap}
 .itemRev .tirar{background:none;border:none;color:var(--tinta-2);font-size:18px;padding:4px}
+.blocoFrete{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:16px;margin:16px 0 0}
+.cepStatus{font-size:13px;color:var(--tinta-2);margin-top:6px;min-height:18px}
+.cepStatus.ok{color:var(--folha);font-weight:600}
+.cepStatus.ruim{color:var(--erro);font-weight:600}
+.opcoesFrete{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+@media(max-width:560px){.opcoesFrete{grid-template-columns:1fr}}
+.opFrete{display:flex;align-items:center;gap:10px;border:1.5px solid var(--linha);border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+.opFrete:has(input:checked){border-color:var(--folha);background:var(--brotinho)}
+.opFrete input{accent-color:var(--folha);width:18px;height:18px}
+.opFrete .opTexto b{display:block;font-size:14px}
+.opFrete .opTexto small{font-size:13px;color:var(--tinta-2)}
 .ajustes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
 @media(max-width:560px){.ajustes{grid-template-columns:1fr}}
 .caixaTotais{background:var(--mata);color:#fff;border-radius:var(--raio);padding:18px;margin-top:8px}
@@ -269,6 +280,7 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
         <div class="campo"><label>CPF</label><input id="fCpf" inputmode="numeric"></div>
         <div class="campo"><label>E-mail</label><input id="fEmail" inputmode="email"></div>
         <div class="campo"><label>Telefone</label><input id="fTelefone" inputmode="tel"></div>
+        <div class="campo"><label>CEP de entrega</label><input id="fCep" inputmode="numeric" placeholder="00000-000"></div>
       </div>
     </div>
   </div>
@@ -290,6 +302,23 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
     <p class="subSecao" id="revCliente"></p>
     <div id="listaRevisao"></div>
 
+    <div class="blocoFrete">
+      <div class="campo">
+        <label>CEP de entrega</label>
+        <input id="inCep" inputmode="numeric" placeholder="00000-000">
+        <div class="cepStatus" id="cepStatus"></div>
+      </div>
+      <div class="opcoesFrete" id="opcoesFrete">
+        <label class="opFrete" data-tipo="capital">
+          <input type="radio" name="tipoFrete" value="capital">
+          <span class="opTexto"><b>Entrega SP capital</b><small id="rotCapital"></small></span>
+        </label>
+        <label class="opFrete" data-tipo="sedex">
+          <input type="radio" name="tipoFrete" value="sedex">
+          <span class="opTexto"><b>Sedex</b><small id="rotSedex"></small></span>
+        </label>
+      </div>
+    </div>
     <div class="ajustes">
       <div class="campo"><label>Frete (R$)</label><input id="inFrete" inputmode="decimal" placeholder="0,00"></div>
       <div class="campo"><label>Desconto (R$)</label><input id="inDesconto" inputmode="decimal" placeholder="0,00"></div>
@@ -334,6 +363,11 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
 const $ = s => document.querySelector(s);
 const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const escapeHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ⚠️ VALORES DE FRETE — ajuste aqui se mudarem:
+   sedex   = qualquer cidade fora de São Paulo capital
+   capital = CEP da cidade de São Paulo */
+const FRETES = { sedex: 60, capital: 40 };
 
 const estado = {
   vendedor: null,
@@ -431,6 +465,7 @@ function escolherCliente(id) {
   document.querySelectorAll('.cliente').forEach(el => el.classList.toggle('sel', el.dataset.id === id));
   $('#fichaCliente').classList.remove('escondido');
   $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
+  $('#fCep').value = mascaraCep(c.cep || '');
   atualizarCupom();
   $('#fichaCliente').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -536,9 +571,63 @@ function montarRevisao() {
     if (!estado.carrinho.size) { irParaPasso(2); desenharProdutos(''); return; }
     montarRevisao();
   }));
+  $('#rotCapital').textContent = brl(FRETES.capital);
+  $('#rotSedex').textContent = brl(FRETES.sedex);
+  const cepFicha = $('#fCep').value;
+  if (cepFicha && $('#inCep').value !== cepFicha) { $('#inCep').value = cepFicha; consultarCep(); }
+  else if (cepFicha && !document.querySelector('input[name="tipoFrete"]:checked')) { consultarCep(); }
   atualizarTotaisRevisao();
 }
 window.zSemMini = () => `<div class="miniSem">${semFotoSvg()}</div>`;
+
+/* ---------- CEP e frete automático ---------- */
+function mascaraCep(t){ const d = String(t||'').replace(/\D/g,'').slice(0,8); return d.length > 5 ? d.slice(0,5) + '-' + d.slice(5) : d; }
+
+// Sem internet no ViaCEP? Cai na régua por faixa: 01000–05999 e 08000–08499 = SP capital
+function capitalPorFaixa(d){ const n = parseInt(d.slice(0,5), 10); return (n >= 1000 && n <= 5999) || (n >= 8000 && n <= 8499); }
+
+let timerCep = null, ultimoCepConsultado = '';
+async function consultarCep() {
+  const st = $('#cepStatus');
+  const d = $('#inCep').value.replace(/\D/g, '');
+  if (d.length !== 8) { st.textContent = d.length ? 'CEP incompleto' : ''; st.className = 'cepStatus'; return; }
+  if (d === ultimoCepConsultado) return;
+  ultimoCepConsultado = d;
+  st.textContent = 'Consultando CEP…'; st.className = 'cepStatus';
+  let capital = null, lugar = '';
+  try {
+    const r = await fetch('https://viacep.com.br/ws/' + d + '/json/');
+    const j = await r.json();
+    if (j.erro) { st.textContent = 'CEP não encontrado — confira'; st.className = 'cepStatus ruim'; return; }
+    lugar = (j.localidade || '') + '/' + (j.uf || '');
+    capital = (j.localidade === 'São Paulo' && j.uf === 'SP');
+  } catch {
+    capital = capitalPorFaixa(d); // ViaCEP fora do ar: decide pela faixa do CEP
+    lugar = capital ? 'São Paulo/SP' : 'fora de SP capital';
+  }
+  marcarFrete(capital ? 'capital' : 'sedex');
+  st.textContent = lugar + ' — ' + (capital ? 'Entrega SP capital' : 'Sedex');
+  st.className = 'cepStatus ok';
+}
+function nomeFreteEscolhido() {
+  const sel = document.querySelector('input[name="tipoFrete"]:checked');
+  if (!sel) return 'Frete';
+  return sel.value === 'capital' ? 'Frete - Entrega SP capital' : 'Frete - Sedex';
+}
+function marcarFrete(tipo) {
+  const radio = document.querySelector('input[name="tipoFrete"][value="' + tipo + '"]');
+  if (radio) radio.checked = true;
+  $('#inFrete').value = String(FRETES[tipo]).replace('.', ',');
+  atualizarTotaisRevisao();
+}
+$('#inCep').addEventListener('input', e => {
+  e.target.value = mascaraCep(e.target.value);
+  $('#fCep').value = e.target.value; // mantém a ficha do cliente em dia
+  clearTimeout(timerCep);
+  timerCep = setTimeout(consultarCep, 400);
+});
+document.querySelectorAll('input[name="tipoFrete"]').forEach(r =>
+  r.addEventListener('change', () => marcarFrete(r.value)));
 
 function atualizarTotaisRevisao() {
   const { subtotal, frete, desconto, total } = totaisAtuais();
@@ -571,6 +660,7 @@ $('#btnGerar').addEventListener('click', async () => {
       clienteNome: $('#fNome').value || estado.clienteSel.nome,
       itens: itens.map(({foto, ...resto}) => resto),
       frete, desconto,
+      freteNome: nomeFreteEscolhido(),
     }),
   });
 
@@ -579,9 +669,10 @@ $('#btnGerar').addEventListener('click', async () => {
 
   abrirDocumento({
     numero: j.numero, data: j.data,
-    cliente: { nome: $('#fNome').value, cpf: $('#fCpf').value, email: $('#fEmail').value, telefone: $('#fTelefone').value },
+    cliente: { nome: $('#fNome').value, cpf: $('#fCpf').value, email: $('#fEmail').value, telefone: $('#fTelefone').value, cep: $('#inCep').value || $('#fCep').value },
     itens,
     subtotal: j.subtotal, frete: j.frete, desconto: j.desconto, total: j.total,
+    freteNome: nomeFreteEscolhido(),
     vendedor: estado.vendedor.nome,
   });
 });
@@ -621,6 +712,7 @@ function abrirDocumento(d) {
           <div><span>CPF</span><b>${escapeHtml(d.cliente.cpf || '—')}</b></div>
           <div><span>E-mail</span><b>${escapeHtml(d.cliente.email || '—')}</b></div>
           <div><span>Telefone</span><b>${escapeHtml(d.cliente.telefone || '—')}</b></div>
+          <div><span>CEP de entrega</span><b>${escapeHtml(d.cliente.cep || '—')}</b></div>
         </div>
       </div>
       <div class="docBloco">
@@ -631,7 +723,7 @@ function abrirDocumento(d) {
         </table>
         <div class="docTotais">
           <div class="li"><span>Subtotal</span><b>${brl(d.subtotal)}</b></div>
-          ${d.frete ? `<div class="li"><span>Frete</span><b>${brl(d.frete)}</b></div>` : ''}
+          ${d.frete ? `<div class="li"><span>${escapeHtml((d.freteNome || 'Frete').replace('Frete - ', 'Frete (') + (d.freteNome && d.freteNome !== 'Frete' ? ')' : ''))}</span><b>${brl(d.frete)}</b></div>` : ''}
           ${d.desconto ? `<div class="li"><span>Desconto</span><b>− ${brl(d.desconto)}</b></div>` : ''}
           <div class="liTotal"><span>Total</span><b>${brl(d.total)}</b></div>
         </div>
@@ -650,6 +742,9 @@ $('#btnNovoOrc').addEventListener('click', () => {
   estado.clienteSel = null;
   $('#fichaCliente').classList.add('escondido');
   $('#inFrete').value = ''; $('#inDesconto').value = '';
+  $('#inCep').value = ''; $('#fCep').value = ''; ultimoCepConsultado = '';
+  $('#cepStatus').textContent = ''; $('#cepStatus').className = 'cepStatus';
+  document.querySelectorAll('input[name="tipoFrete"]').forEach(r => r.checked = false);
   $('#buscaCliente').value = ''; $('#buscaProduto').value = '';
   desenharProdutos('');
   carregarClientes('');
