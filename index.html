@@ -366,6 +366,7 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
   <div class="folha" id="folhaDoc"><!-- preenchido pelo JS --></div>
   <div class="docBarra">
     <button class="btn btn-claro" id="btnNovoOrc">Novo orçamento</button>
+    <button class="btn btn-fantasma escondido" id="btnLinkHs">Abrir link do orçamento</button>
     <button class="btn btn-verde" id="btnImprimir">Salvar PDF / Imprimir</button>
   </div>
 </div>
@@ -715,6 +716,7 @@ $('#btnGerar').addEventListener('click', async () => {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       negocioId: estado.negocioSel.id,
+      contatoId: estado.contatoSel ? estado.contatoSel.id : null,
       itens: itens.map(({foto, ...resto}) => resto),
       frete, desconto,
       freteNome: nomeFreteEscolhido(),
@@ -731,6 +733,8 @@ $('#btnGerar').addEventListener('click', async () => {
     subtotal: j.subtotal, frete: j.frete, desconto: j.desconto, total: j.total,
     freteNome: nomeFreteEscolhido(),
     vendedor: estado.vendedor.nome,
+    linkHubspot: j.linkHubspot || '',
+    avisoOrcamento: j.avisoOrcamento || '',
   });
 });
 
@@ -790,6 +794,18 @@ function abrirDocumento(d) {
       <span>Zeleno · zelenostore.com</span>
       <span>Orçamento válido por 7 dias. Valores sujeitos a confirmação de estoque.</span>
     </div>`;
+  const btnLink = $('#btnLinkHs');
+  if (d.linkHubspot) {
+    btnLink.classList.remove('escondido');
+    btnLink.onclick = () => window.open(d.linkHubspot, '_blank');
+  } else {
+    btnLink.classList.add('escondido');
+  }
+  document.querySelectorAll('#telaDoc .msgErro').forEach(el => el.remove());
+  if (d.avisoOrcamento) {
+    $('#folhaDoc').insertAdjacentHTML('beforebegin',
+      '<div class="msgErro" style="max-width:760px;margin:0 auto 12px">' + escapeHtml(d.avisoOrcamento) + '</div>');
+  }
   $('#telaDoc').classList.remove('escondido');
 }
 $('#btnImprimir').addEventListener('click', () => window.print());
