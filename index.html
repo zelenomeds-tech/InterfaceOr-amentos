@@ -151,6 +151,14 @@ img{display:block}
 .itemRev .meio{flex:1;min-width:0}
 .itemRev .meio b{font-size:14px;display:block}
 .itemRev .meio span{font-size:13px;color:var(--tinta-2)}
+.descItem{display:flex;align-items:center;gap:6px;margin-top:7px}
+.descItem .descRot{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-2)}
+.descItem select,.descItem input{border:1.5px solid var(--linha);border-radius:8px;background:#FDFDFC;font-size:13px;height:30px;padding:0 6px}
+.descItem select{width:56px}
+.descItem input{width:76px}
+.descItem select:focus,.descItem input:focus{outline:none;border-color:var(--folha)}
+.descItem .descTag{font-size:11px;color:var(--folha);font-weight:700;display:none}
+.itemRev.comDesconto .descTag{display:inline}
 .itemRev .valor{font-weight:700;font-size:14px;white-space:nowrap}
 .itemRev .tirar{background:none;border:none;color:var(--tinta-2);font-size:18px;padding:4px}
 .blocoFrete{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:16px;margin:16px 0 0}
@@ -335,13 +343,12 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
     </div>
     <div class="ajustes">
       <div class="campo"><label>Frete (R$)</label><input id="inFrete" inputmode="decimal" placeholder="0,00"></div>
-      <div class="campo"><label>Desconto (R$)</label><input id="inDesconto" inputmode="decimal" placeholder="0,00"></div>
     </div>
 
     <div class="caixaTotais">
       <div class="li"><span>Subtotal</span><span id="tSubtotal"></span></div>
+      <div class="li"><span>Descontos</span><span id="tDesconto"></span></div>
       <div class="li"><span>Frete</span><span id="tFrete"></span></div>
-      <div class="li"><span>Desconto</span><span id="tDesconto"></span></div>
       <div class="li total"><span>Total</span><b id="tTotal"></b></div>
     </div>
 
@@ -392,6 +399,7 @@ const estado = {
   negociosDoContato: new Map(), // contatoId -> lista de negócios (cache)
   produtos: [],
   carrinho: new Map(),  // produtoId -> quantidade
+  descontos: new Map(), // produtoId -> { tipo: '%' | 'R$', valor: number }
   passo: 1,
 };
 
@@ -571,16 +579,20 @@ function desenharProdutos(filtro) {
 function semFotoSvg(){ return '<svg class="semFoto" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L7 20"/></svg>'; }
 
 /* ---------- cupom ---------- */
+function descontoUnitario(p) {
+  const d = estado.descontos.get(p.id);
+  if (!d || !(d.valor > 0)) return 0;
+  return d.tipo === '%' ? p.preco * Math.min(100, d.valor) / 100 : Math.min(p.preco, d.valor);
+}
 function totaisAtuais() {
-  let subtotal = 0, qtdItens = 0;
+  let subtotal = 0, descontos = 0, qtdItens = 0;
   for (const [id, q] of estado.carrinho) {
     const p = estado.produtos.find(x => x.id === id);
-    if (p) { subtotal += p.preco * q; qtdItens += q; }
+    if (p) { subtotal += p.preco * q; descontos += descontoUnitario(p) * q; qtdItens += q; }
   }
   const frete = lerValor($('#inFrete').value);
-  const desconto = lerValor($('#inDesconto').value);
-  const total = Math.max(0, subtotal + frete - desconto);
-  return { subtotal, frete, desconto, total, qtdItens };
+  const total = Math.max(0, subtotal - descontos + frete);
+  return { subtotal, descontos, frete, total, qtdItens };
 }
 function lerValor(t){ const n = parseFloat(String(t||'').replace(/\./g,'').replace(',', '.')); return isNaN(n) ? 0 : Math.max(0, n); }
 
@@ -616,20 +628,49 @@ function montarRevisao() {
   for (const [id, q] of estado.carrinho) {
     const p = estado.produtos.find(x => x.id === id);
     if (!p) continue;
+    const d = estado.descontos.get(id) || { tipo: '%', valor: 0 };
+    const liquido = (p.preco - descontoUnitario(p)) * q;
     linhas.push(`
-      <div class="itemRev" data-id="${p.id}">
+      <div class="itemRev ${d.valor > 0 ? 'comDesconto' : ''}" data-id="${p.id}">
         ${p.foto ? `<img src="${escapeHtml(p.foto)}" alt="" onerror="this.outerHTML=zSemMini()">` : `<div class="miniSem">${semFotoSvg()}</div>`}
-        <div class="meio"><b>${escapeHtml(p.nome)}</b><span>${q} × ${brl(p.preco)}</span></div>
-        <div class="valor">${brl(p.preco * q)}</div>
+        <div class="meio">
+          <b>${escapeHtml(p.nome)}</b>
+          <span>${q} × ${brl(p.preco)}</span>
+          <div class="descItem">
+            <span class="descRot">Desconto</span>
+            <select class="descTipo"><option value="%" ${d.tipo === '%' ? 'selected' : ''}>%</option><option value="R$" ${d.tipo === 'R$' ? 'selected' : ''}>R$</option></select>
+            <input class="descValor" inputmode="decimal" placeholder="0" value="${d.valor > 0 ? String(d.valor).replace('.', ',') : ''}">
+            <span class="descTag">Pessoal</span>
+          </div>
+        </div>
+        <div class="valor">${brl(liquido)}</div>
         <button class="tirar" title="Remover">✕</button>
       </div>`);
   }
   lista.innerHTML = linhas.join('');
   lista.querySelectorAll('.tirar').forEach(b => b.addEventListener('click', ev => {
-    estado.carrinho.delete(ev.target.closest('.itemRev').dataset.id);
+    const id = ev.target.closest('.itemRev').dataset.id;
+    estado.carrinho.delete(id);
+    estado.descontos.delete(id);
     if (!estado.carrinho.size) { irParaPasso(2); desenharProdutos(''); return; }
     montarRevisao();
   }));
+  lista.querySelectorAll('.itemRev').forEach(linha => {
+    const id = linha.dataset.id;
+    const aoMudar = () => {
+      const tipo = linha.querySelector('.descTipo').value;
+      const valor = lerValor(linha.querySelector('.descValor').value);
+      if (valor > 0) estado.descontos.set(id, { tipo, valor });
+      else estado.descontos.delete(id);
+      const p = estado.produtos.find(x => x.id === id);
+      const q = estado.carrinho.get(id) || 1;
+      linha.querySelector('.valor').textContent = brl((p.preco - descontoUnitario(p)) * q);
+      linha.classList.toggle('comDesconto', valor > 0);
+      atualizarTotaisRevisao();
+    };
+    linha.querySelector('.descTipo').addEventListener('change', aoMudar);
+    linha.querySelector('.descValor').addEventListener('input', aoMudar);
+  });
   $('#rotCapital').textContent = brl(FRETES.capital);
   $('#rotSedex').textContent = brl(FRETES.sedex);
   const cepFicha = $('#fCep').value;
@@ -689,14 +730,13 @@ document.querySelectorAll('input[name="tipoFrete"]').forEach(r =>
   r.addEventListener('change', () => marcarFrete(r.value)));
 
 function atualizarTotaisRevisao() {
-  const { subtotal, frete, desconto, total } = totaisAtuais();
+  const { subtotal, descontos, frete, total } = totaisAtuais();
   $('#tSubtotal').textContent = brl(subtotal);
+  $('#tDesconto').textContent = descontos ? '− ' + brl(descontos) : '—';
   $('#tFrete').textContent = frete ? brl(frete) : '—';
-  $('#tDesconto').textContent = desconto ? '− ' + brl(desconto) : '—';
   $('#tTotal').textContent = brl(total);
 }
 $('#inFrete').addEventListener('input', atualizarTotaisRevisao);
-$('#inDesconto').addEventListener('input', atualizarTotaisRevisao);
 $('#btnVoltarProdutos').addEventListener('click', () => irParaPasso(2));
 
 /* ---------- gerar ---------- */
@@ -708,17 +748,24 @@ $('#btnGerar').addEventListener('click', async () => {
   const itens = [];
   for (const [id, q] of estado.carrinho) {
     const p = estado.produtos.find(x => x.id === id);
-    if (p) itens.push({ produtoId: p.id, nome: p.nome, preco: p.preco, quantidade: q, foto: p.foto });
+    if (!p) continue;
+    const d = estado.descontos.get(id);
+    itens.push({
+      produtoId: p.id, nome: p.nome, preco: p.preco, quantidade: q, foto: p.foto,
+      descontoTipo: d ? d.tipo : null,
+      descontoValor: d ? d.valor : 0,
+      descontoUn: descontoUnitario(p),
+    });
   }
-  const { frete, desconto } = totaisAtuais();
+  const { frete } = totaisAtuais();
 
   const j = await api('/api/orcamento', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       negocioId: estado.negocioSel.id,
       contatoId: estado.contatoSel ? estado.contatoSel.id : null,
-      itens: itens.map(({foto, ...resto}) => resto),
-      frete, desconto,
+      itens: itens.map(({foto, descontoUn, ...resto}) => resto),
+      frete,
       freteNome: nomeFreteEscolhido(),
     }),
   });
@@ -730,7 +777,7 @@ $('#btnGerar').addEventListener('click', async () => {
     numero: j.numero, data: j.data,
     cliente: { nome: $('#fNome').value, cpf: $('#fCpf').value, email: $('#fEmail').value, telefone: $('#fTelefone').value, cep: $('#inCep').value || $('#fCep').value },
     itens,
-    subtotal: j.subtotal, frete: j.frete, desconto: j.desconto, total: j.total,
+    subtotal: j.subtotal, descontos: j.descontos, frete: j.frete, total: j.total,
     freteNome: nomeFreteEscolhido(),
     vendedor: estado.vendedor.nome,
     linkHubspot: j.linkHubspot || '',
@@ -740,16 +787,20 @@ $('#btnGerar').addEventListener('click', async () => {
 
 /* ---------- documento ---------- */
 function abrirDocumento(d) {
-  const linhas = d.itens.map(i => `
+  const linhas = d.itens.map(i => {
+    const liquidoUn = i.preco - (i.descontoUn || 0);
+    const temDesc = (i.descontoUn || 0) > 0;
+    return `
     <tr>
       <td><div class="prodCel">
         ${i.foto ? `<img src="${escapeHtml(i.foto)}" alt="" onerror="this.outerHTML=zSemMini()">` : `<div class="miniSem">${semFotoSvg()}</div>`}
-        <span>${escapeHtml(i.nome)}</span>
+        <span>${escapeHtml(i.nome)}${temDesc ? '<br><small style="color:var(--folha);font-weight:700">desconto aplicado</small>' : ''}</span>
       </div></td>
       <td class="num">${i.quantidade}</td>
-      <td class="num">${brl(i.preco)}</td>
-      <td class="num"><b>${brl(i.preco * i.quantidade)}</b></td>
-    </tr>`).join('');
+      <td class="num">${temDesc ? `<s style="color:var(--tinta-2)">${brl(i.preco)}</s><br>` : ''}${brl(liquidoUn)}</td>
+      <td class="num"><b>${brl(liquidoUn * i.quantidade)}</b></td>
+    </tr>`;
+  }).join('');
 
   $('#folhaDoc').innerHTML = `
     <div class="docCabeca">
@@ -784,8 +835,8 @@ function abrirDocumento(d) {
         </table>
         <div class="docTotais">
           <div class="li"><span>Subtotal</span><b>${brl(d.subtotal)}</b></div>
+          ${d.descontos ? `<div class="li"><span>Descontos</span><b>− ${brl(d.descontos)}</b></div>` : ''}
           ${d.frete ? `<div class="li"><span>${escapeHtml((d.freteNome || 'Frete').replace('Frete - ', 'Frete (') + (d.freteNome && d.freteNome !== 'Frete' ? ')' : ''))}</span><b>${brl(d.frete)}</b></div>` : ''}
-          ${d.desconto ? `<div class="li"><span>Desconto</span><b>− ${brl(d.desconto)}</b></div>` : ''}
           <div class="liTotal"><span>Total</span><b>${brl(d.total)}</b></div>
         </div>
       </div>
@@ -812,11 +863,12 @@ $('#btnImprimir').addEventListener('click', () => window.print());
 $('#btnNovoOrc').addEventListener('click', () => {
   $('#telaDoc').classList.add('escondido');
   estado.carrinho.clear();
+  estado.descontos.clear();
   estado.negocioSel = null;
   estado.contatoSel = null;
   estado.negociosDoContato.clear();
   $('#fichaCliente').classList.add('escondido');
-  $('#inFrete').value = ''; $('#inDesconto').value = '';
+  $('#inFrete').value = '';
   $('#inCep').value = ''; $('#fCep').value = ''; ultimoCepConsultado = '';
   $('#cepStatus').textContent = ''; $('#cepStatus').className = 'cepStatus';
   document.querySelectorAll('input[name="tipoFrete"]').forEach(r => r.checked = false);
