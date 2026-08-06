@@ -98,6 +98,20 @@ img{display:block}
 .cliente .info{min-width:0}
 .cliente .info b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cliente .info span{font-size:13px;color:var(--tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.blocoContato{background:transparent}
+.negociosBox{border:1.5px solid var(--linha);border-top:none;border-radius:0 0 var(--raio) var(--raio);background:#FBFCFA;padding:10px 12px;margin:-6px 0 2px}
+.blocoContato .cliente.aberto{border-radius:var(--raio) var(--raio) 0 0}
+.negTitulo{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-2);margin:2px 0 8px}
+.negLinha{display:flex;align-items:center;gap:10px;border:1.5px solid var(--linha);border-radius:10px;background:var(--branco);padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s}
+.negLinha:hover{border-color:var(--folha)}
+.negLinha.sel{border-color:var(--folha);background:var(--brotinho)}
+.negLinha .negInfo{flex:1;min-width:0}
+.negLinha .negInfo b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.negLinha .negInfo span{font-size:12px;color:var(--tinta-2)}
+.negLinha .etiqueta{font-size:11px;font-weight:700;color:var(--folha);background:var(--brotinho);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.negLinha.travado{opacity:.55;cursor:default}
+.negLinha.travado:hover{border-color:var(--linha)}
+.negLinha.travado .etiqueta{color:var(--tinta-2);background:#EDEFEA}
 
 .fichaCliente{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:18px;margin-top:16px}
 .fichaCliente h3{font-family:var(--display);font-size:16px;color:var(--mata);margin-bottom:12px}
@@ -265,11 +279,11 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
 
   <!-- PASSO 1: CLIENTE -->
   <div class="conteudo" id="passoCliente">
-    <h2 class="tituloSecao">Qual negócio recebe o orçamento?</h2>
-    <p class="subSecao">Seus negócios em aberto no HubSpot (antes do pagamento). Toque para escolher.</p>
+    <h2 class="tituloSecao">Para quem é o orçamento?</h2>
+    <p class="subSecao">Busque o cliente e toque nele para ver os negócios dele no HubSpot.</p>
     <div class="buscaLinha">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="buscaCliente" type="search" placeholder="Buscar por cliente ou nome do negócio">
+      <input id="buscaCliente" type="search" placeholder="Nome, e-mail, CPF ou ID do registro">
     </div>
     <div id="listaClientes" class="listaClientes"><div class="carregando"><span class="aro"></span>Carregando seus clientes…</div></div>
 
@@ -371,8 +385,10 @@ const FRETES = { sedex: 60, capital: 40 };
 
 const estado = {
   vendedor: null,
-  negocios: [],
+  clientes: [],
+  contatoSel: null,
   negocioSel: null,
+  negociosDoContato: new Map(), // contatoId -> lista de negócios (cache)
   produtos: [],
   carrinho: new Map(),  // produtoId -> quantidade
   passo: 1,
@@ -411,7 +427,7 @@ function iniciarApp(sessao) {
   $('#nomeVendedor').textContent = sessao.nome || sessao.email;
   mostrarApp();
   irParaPasso(1);
-  carregarNegocios('');
+  carregarClientes('');
   carregarProdutos();
 }
 
@@ -436,38 +452,77 @@ document.querySelectorAll('.passo').forEach(p => p.addEventListener('click', () 
   if (n === 3 && estado.negocioSel && estado.carrinho.size) irParaPasso(3);
 }));
 
-/* ---------- negócios ---------- */
+/* ---------- contatos e negócios ---------- */
 let timerBusca = null;
 $('#buscaCliente').addEventListener('input', e => {
   clearTimeout(timerBusca);
-  timerBusca = setTimeout(() => carregarNegocios(e.target.value.trim()), 350);
+  timerBusca = setTimeout(() => carregarClientes(e.target.value.trim()), 350);
 });
 
-async function carregarNegocios(busca) {
+async function carregarClientes(busca) {
   const lista = $('#listaClientes');
   lista.innerHTML = '<div class="carregando"><span class="aro"></span>Buscando…</div>';
-  const j = await api('/api/negocios' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
+  const j = await api('/api/clientes' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
   if (!j.ok) { lista.innerHTML = '<div class="vazio">' + escapeHtml(j.erro || 'Não foi possível carregar') + '</div>'; return; }
-  estado.negocios = j.negocios;
-  if (!j.negocios.length) { lista.innerHTML = '<div class="vazio">Nenhum negócio em aberto encontrado. Ajuste a busca ou crie o negócio no HubSpot primeiro.</div>'; return; }
-  lista.innerHTML = j.negocios.map(n => {
-    const nomeCliente = n.cliente ? n.cliente.nome : '(negócio sem contato associado)';
-    return `
-    <div class="cliente ${estado.negocioSel && estado.negocioSel.id === n.id ? 'sel' : ''}" data-id="${n.id}">
-      <div class="inicial">${escapeHtml((nomeCliente || '?').trim().charAt(0).toUpperCase())}</div>
-      <div class="info"><b>${escapeHtml(nomeCliente)}</b><span>${escapeHtml(n.nome)} · ${escapeHtml(n.etapa)}</span></div>
-    </div>`;
-  }).join('');
-  lista.querySelectorAll('.cliente').forEach(el => el.addEventListener('click', () => escolherNegocio(el.dataset.id)));
+  estado.clientes = j.clientes;
+  if (!j.clientes.length) { lista.innerHTML = '<div class="vazio">' + escapeHtml(j.aviso || 'Nenhum cliente encontrado. Ajuste a busca.') + '</div>'; return; }
+  lista.innerHTML = j.clientes.map(c => `
+    <div class="blocoContato" data-id="${c.id}">
+      <div class="cliente" data-id="${c.id}">
+        <div class="inicial">${escapeHtml((c.nome || '?').trim().charAt(0).toUpperCase())}</div>
+        <div class="info"><b>${escapeHtml(c.nome)}</b><span>${escapeHtml([c.email, c.telefone].filter(Boolean).join(' · ') || 'sem contato cadastrado')}</span></div>
+      </div>
+      <div class="negociosBox escondido"></div>
+    </div>`).join('');
+  lista.querySelectorAll('.cliente').forEach(el => el.addEventListener('click', () => abrirNegociosDoContato(el.dataset.id)));
 }
 
-function escolherNegocio(id) {
-  const n = estado.negocios.find(x => x.id === id);
-  if (!n) return;
+async function abrirNegociosDoContato(contatoId) {
+  const bloco = document.querySelector('.blocoContato[data-id="' + contatoId + '"]');
+  const box = bloco.querySelector('.negociosBox');
+  const card = bloco.querySelector('.cliente');
+
+  // fecha os outros
+  document.querySelectorAll('.negociosBox').forEach(b => { if (b !== box) b.classList.add('escondido'); });
+  document.querySelectorAll('.cliente').forEach(c => { if (c !== card) c.classList.remove('aberto'); });
+
+  const jaAberto = !box.classList.contains('escondido');
+  if (jaAberto) { box.classList.add('escondido'); card.classList.remove('aberto'); return; }
+  box.classList.remove('escondido'); card.classList.add('aberto');
+
+  let negocios = estado.negociosDoContato.get(contatoId);
+  if (!negocios) {
+    box.innerHTML = '<div class="carregando" style="padding:14px 0"><span class="aro"></span>Buscando os negócios…</div>';
+    const j = await api('/api/negocios?contato=' + contatoId);
+    if (!j.ok) { box.innerHTML = '<div class="vazio" style="padding:14px 0">' + escapeHtml(j.erro || 'Não foi possível carregar') + '</div>'; return; }
+    negocios = j.negocios;
+    estado.negociosDoContato.set(contatoId, negocios);
+  }
+  desenharNegocios(contatoId, box, negocios);
+}
+
+function desenharNegocios(contatoId, box, negocios) {
+  if (!negocios.length) {
+    box.innerHTML = '<div class="vazio" style="padding:14px 0">Esse cliente não tem negócio no HubSpot. Crie o negócio lá primeiro.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="negTitulo">Escolha o negócio que recebe o orçamento</div>' + negocios.map(n => `
+    <div class="negLinha ${n.selecionavel ? '' : 'travado'} ${estado.negocioSel && estado.negocioSel.id === n.id ? 'sel' : ''}" data-id="${n.id}">
+      <div class="negInfo"><b>${escapeHtml(n.nome)}</b><span>${escapeHtml(n.pipeline)}${n.valor ? ' · ' + brl(n.valor) : ''}</span></div>
+      <span class="etiqueta">${escapeHtml(n.etapa)}</span>
+    </div>`).join('');
+  box.querySelectorAll('.negLinha:not(.travado)').forEach(el =>
+    el.addEventListener('click', () => escolherNegocio(contatoId, el.dataset.id)));
+}
+
+function escolherNegocio(contatoId, negocioId) {
+  const c = estado.clientes.find(x => x.id === contatoId);
+  const n = (estado.negociosDoContato.get(contatoId) || []).find(x => x.id === negocioId);
+  if (!c || !n) return;
+  estado.contatoSel = c;
   estado.negocioSel = n;
-  document.querySelectorAll('.cliente').forEach(el => el.classList.toggle('sel', el.dataset.id === id));
+  document.querySelectorAll('.negLinha').forEach(el => el.classList.toggle('sel', el.dataset.id === negocioId));
   $('#fichaCliente').classList.remove('escondido');
-  const c = n.cliente || { nome: '', cpf: '', email: '', telefone: '', cep: '' };
   $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
   $('#fCep').value = mascaraCep(c.cep || '');
   atualizarCupom();
@@ -534,9 +589,8 @@ function atualizarCupom() {
   if (estado.passo === 1) {
     if (!estado.negocioSel) { cupom.classList.add('escondido'); return; }
     cupom.classList.remove('escondido');
-    $('#cupomItens').textContent = 'Negócio escolhido';
-    const nomeCli = (estado.negocioSel.cliente && estado.negocioSel.cliente.nome) || estado.negocioSel.nome;
-    $('#cupomTotal').textContent = nomeCli.split(' ')[0];
+    $('#cupomItens').textContent = estado.negocioSel.etapa;
+    $('#cupomTotal').textContent = ((estado.contatoSel && estado.contatoSel.nome) || estado.negocioSel.nome).split(' ')[0];
     $('#btnCupom').textContent = 'Escolher produtos';
   } else if (estado.passo === 2) {
     if (!estado.carrinho.size) { cupom.classList.add('escondido'); return; }
@@ -743,6 +797,8 @@ $('#btnNovoOrc').addEventListener('click', () => {
   $('#telaDoc').classList.add('escondido');
   estado.carrinho.clear();
   estado.negocioSel = null;
+  estado.contatoSel = null;
+  estado.negociosDoContato.clear();
   $('#fichaCliente').classList.add('escondido');
   $('#inFrete').value = ''; $('#inDesconto').value = '';
   $('#inCep').value = ''; $('#fCep').value = ''; ultimoCepConsultado = '';
@@ -750,7 +806,7 @@ $('#btnNovoOrc').addEventListener('click', () => {
   document.querySelectorAll('input[name="tipoFrete"]').forEach(r => r.checked = false);
   $('#buscaCliente').value = ''; $('#buscaProduto').value = '';
   desenharProdutos('');
-  carregarNegocios('');
+  carregarClientes('');
   irParaPasso(1);
 });
 
