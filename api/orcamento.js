@@ -1,4 +1,4 @@
-const { CFG, sessaoDoRequest, hs, json, lerBody } = require('./_lib.js');
+const { CFG, sessaoDoRequest, hs, json, lerBody, catalogoProdutos, casarReceita } = require('./_lib.js');
 
 // POST /api/orcamento
 // Corpo: { negocioId, contatoId, itens: [{produtoId, nome, preco, quantidade,
@@ -50,6 +50,36 @@ module.exports = async (req, res) => {
 
   const nFrete = Math.max(0, parseFloat(frete) || 0);
   const origem = await origemDesconto();
+
+  // TRAVA DA RECEITA (dupla checagem, além da tela): se o contato tem a leitura
+  // da receita salva, o servidor confere que todo produto está liberado e que a
+  // soma de gramas por grupo não passa do limite prescrito.
+  if (contatoId) {
+    try {
+      const ct = await hs('/crm/v3/objects/contacts/' + encodeURIComponent(contatoId) + '?properties=receita_liberada');
+      const rec = JSON.parse(ct.properties?.receita_liberada || 'null');
+      if (rec && rec.status === 'ok' && Array.isArray(rec.itensReceita)) {
+        if (rec.receitaVencida) return json(res, 400, { ok: false, erro: 'A receita deste cliente está vencida — peça uma receita nova antes de gerar o orçamento.' });
+        const { produtos } = await catalogoProdutos();
+        const casado = casarReceita(rec.itensReceita, produtos);
+        const info = Object.fromEntries(casado.liberados.map(l => [String(l.id), l]));
+        const limites = Object.fromEntries(casado.grupos.map(g => [String(g.chave), g]));
+        const usoPorGrupo = {};
+        for (const i of itens) {
+          const l = info[String(i.produtoId)];
+          if (!l) return json(res, 400, { ok: false, erro: 'O produto "' + (i.nome || i.produtoId) + '" não consta na receita deste cliente.' });
+          const g = l.grupo && limites[l.grupo];
+          if (g && g.gramas !== null && g.gramas > 0) {
+            const gPorUn = Number(l.gramasPorUnidade) > 0 ? Number(l.gramasPorUnidade) : 5;
+            usoPorGrupo[l.grupo] = (usoPorGrupo[l.grupo] || 0) + gPorUn * (parseInt(i.quantidade) || 1);
+            if (usoPorGrupo[l.grupo] > g.gramas) {
+              return json(res, 400, { ok: false, erro: 'Quantidade acima da receita em "' + (g.descricao || l.grupo) + '": limite de ' + g.gramas + 'g' + (g.periodo ? ' por ' + g.periodo : '') + '.' });
+            }
+          }
+        }
+      }
+  } catch (e) { /* sem leitura de receita salva: segue (a tela já avisou o vendedor) */ }
+  }
 
   // monta os itens já com desconto unitário e soma os totais
   let subtotal = 0, totalDescontos = 0;
