@@ -29,8 +29,10 @@ module.exports = async (req, res) => {
   };
 
   try {
-    // Busca por ID do registro: só números com 3+ dígitos
+    // Busca por ID do registro: só números com 3+ dígitos.
+    // Pode ser ID de CONTATO ou ID de NEGÓCIO (o vendedor copia o que estiver na tela).
     if (/^\d{3,}$/.test(busca)) {
+      // 1) tenta como contato
       try {
         const c = await hs('/crm/v3/objects/contacts/' + busca + '?properties=' + props.join(','));
         const dono = String(c.properties?.hubspot_owner_id || '');
@@ -38,6 +40,22 @@ module.exports = async (req, res) => {
           return json(res, 200, { ok: true, total: 1, clientes: [montar(c)] });
         }
         return json(res, 200, { ok: true, total: 0, clientes: [], aviso: 'Esse ID existe, mas o contato não é seu.' });
+      } catch { /* não é contato: tenta como negócio */ }
+
+      // 2) tenta como negócio → devolve o cliente associado a ele
+      try {
+        const n = await hs('/crm/v3/objects/deals/' + busca + '?properties=hubspot_owner_id&associations=contacts');
+        const donoNegocio = String(n.properties?.hubspot_owner_id || '');
+        if (s.papel !== 'admin' && donoNegocio !== String(s.ownerId)) {
+          return json(res, 200, { ok: true, total: 0, clientes: [], aviso: 'Esse ID é de um negócio, mas ele não é seu.' });
+        }
+        const contatoId = n.associations?.contacts?.results?.[0]?.id;
+        if (!contatoId) {
+          return json(res, 200, { ok: true, total: 0, clientes: [], aviso: 'Esse negócio não tem contato associado no HubSpot. Associe o contato lá primeiro.' });
+        }
+        const c = await hs('/crm/v3/objects/contacts/' + contatoId + '?properties=' + props.join(','));
+        // aqui não checa o dono do contato: o negócio é do vendedor, isso basta
+        return json(res, 200, { ok: true, total: 1, clientes: [montar(c)] });
       } catch { /* não achou por ID: cai na busca normal (pode ser CPF) */ }
     }
 
