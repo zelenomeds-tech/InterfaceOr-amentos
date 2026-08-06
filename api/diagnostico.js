@@ -27,6 +27,18 @@ module.exports = async (req, res) => {
       }
       saida.hubspot.conectado = true;
 
+      // Propriedade "Origem do Desconto" dos itens de linha
+      try {
+        const propsLi = await hs('/crm/v3/properties/line_items');
+        const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const p = (propsLi.results || []).find(x => norm(x.label).includes('origem') && norm(x.label).includes('desconto'));
+        saida.origemDesconto = p
+          ? { propriedade: p.name, rotulo: p.label, opcoes: (p.options || []).map(o => ({ rotulo: o.label, valorInterno: o.value })) }
+          : '⚠️ nenhuma propriedade de item de linha com "Origem" e "Desconto" no nome — os descontos entram sem a origem';
+      } catch (e) {
+        saida.origemDesconto = 'erro ao listar propriedades: ' + e.message;
+      }
+
       // Modelos de orçamento (para a variável MODELO_ORCAMENTO_ID, se quiser fixar um)
       try {
         const modelos = await hs('/crm/v3/objects/quote_template?limit=10&properties=hs_name');
