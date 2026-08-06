@@ -112,7 +112,8 @@ module.exports = async (req, res) => {
       const orcamentoId = String(orc.id);
 
       // o orçamento precisa dos PRÓPRIOS itens de linha (cópias dos do negócio)
-      const assocItemOrc = [{ to: { id: orcamentoId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 67 }] }];
+      // ⚠️ sentido da associação: item de linha → orçamento = 68 (67 é o inverso e dá erro de limite)
+      const assocItemOrc = [{ to: { id: orcamentoId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 68 }] }];
       await hs('/crm/v3/objects/line_items/batch/create', {
         method: 'POST',
         body: JSON.stringify({ inputs: inputs.map(i => ({ properties: i.properties, associations: assocItemOrc })) }),
