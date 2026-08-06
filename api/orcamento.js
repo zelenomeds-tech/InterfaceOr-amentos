@@ -7,14 +7,14 @@ const { CFG, sessaoDoRequest, hs, json, lerBody } = require('./_lib.js');
 // HubSpot: hs_discount_percentage para %, discount para R$), e o campo
 // "Origem do Desconto" recebe "Desconto Pessoal" nos itens com desconto.
 
-// Descobre sozinho a propriedade "Origem do Desconto" e o valor interno da
-// opção "Desconto Pessoal" (dá para fixar com PROP_ORIGEM_DESCONTO e
-// VALOR_ORIGEM_DESCONTO na Vercel, se um dia precisar).
+// Descobre sozinho a propriedade "Origem do Desconto" e os valores internos
+// das opções "Desconto Pessoal" e "Desconto Zeleno" (dá para fixar com
+// PROP_ORIGEM_DESCONTO na Vercel, se um dia precisar).
 let cacheOrigem = { quando: 0, dados: null };
 function semAcento(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 async function origemDesconto() {
   const propEnv = (process.env.PROP_ORIGEM_DESCONTO || '').trim();
-  if (propEnv) return { prop: propEnv, valor: (process.env.VALOR_ORIGEM_DESCONTO || 'Desconto Pessoal').trim() };
+  if (propEnv) return { prop: propEnv, valores: { pessoal: 'Desconto Pessoal', zeleno: 'Desconto Zeleno' } };
   const agora = Date.now();
   if (cacheOrigem.dados && agora - cacheOrigem.quando < 30 * 60 * 1000) return cacheOrigem.dados;
   let dados = null;
@@ -23,8 +23,14 @@ async function origemDesconto() {
     for (const p of (props.results || [])) {
       const rotulo = semAcento(p.label);
       if (rotulo.includes('origem') && rotulo.includes('desconto')) {
-        const op = (p.options || []).find(o => semAcento(o.label).includes('pessoal'));
-        dados = { prop: p.name, valor: op ? op.value : 'Desconto Pessoal' };
+        const acha = termo => { const o = (p.options || []).find(x => semAcento(x.label).includes(termo)); return o ? o.value : null; };
+        dados = {
+          prop: p.name,
+          valores: {
+            pessoal: acha('pessoal') || 'Desconto Pessoal',
+            zeleno: acha('zeleno') || 'Desconto Zeleno',
+          },
+        };
         break;
       }
     }
@@ -67,7 +73,11 @@ module.exports = async (req, res) => {
         descUn = Math.min(preco, dv);
         props.discount = descUn.toFixed(2);
       }
-      if (origem && origem.prop) props[origem.prop] = origem.valor; // Origem do Desconto = Desconto Pessoal
+      if (origem && origem.prop) {
+        // Origem do Desconto = o que o vendedor escolheu (Pessoal ou Zeleno)
+        const chave = i.descontoOrigem === 'zeleno' ? 'zeleno' : 'pessoal';
+        props[origem.prop] = origem.valores[chave];
+      }
     }
     subtotal += preco * qtd;
     totalDescontos += descUn * qtd;
