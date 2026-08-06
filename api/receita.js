@@ -38,7 +38,10 @@ module.exports = async (req, res) => {
     // servidor, cruzando com o Grupo de Liberação do catálogo (regra fixa).
     if (corpo.ok && corpo.status === 'ok' && Array.isArray(corpo.itensReceita)) {
       const { produtos } = await catalogoProdutos();
-      const casado = casarReceita(corpo.itensReceita, produtos.filter(p => p.ativo));
+      // mesma válvula do /api/produtos: se o filtro de Status zerar, usa todos
+      const ativos = produtos.filter(p => p.ativo);
+      const base = ativos.length ? ativos : produtos;
+      const casado = casarReceita(corpo.itensReceita, base);
       return json(res, 200, { ...corpo, liberados: casado.liberados, grupos: casado.grupos });
     }
     return json(res, 200, corpo);
