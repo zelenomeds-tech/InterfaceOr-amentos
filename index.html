@@ -166,6 +166,7 @@ img{display:block}
 .descItem .descRot{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-2)}
 .descItem select,.descItem input{border:1.5px solid var(--linha);border-radius:8px;background:#FDFDFC;font-size:13px;height:30px;padding:0 6px}
 .descItem select{width:56px}
+.descItem select.descOrigem{width:92px}
 .descItem input{width:76px}
 .descItem select:focus,.descItem input:focus{outline:none;border-color:var(--folha)}
 .descItem .descTag{font-size:11px;color:var(--folha);font-weight:700;display:none}
@@ -724,7 +725,10 @@ function montarRevisao() {
             <span class="descRot">Desconto</span>
             <select class="descTipo"><option value="%" ${d.tipo === '%' ? 'selected' : ''}>%</option><option value="R$" ${d.tipo === 'R$' ? 'selected' : ''}>R$</option></select>
             <input class="descValor" inputmode="decimal" placeholder="0" value="${d.valor > 0 ? String(d.valor).replace('.', ',') : ''}">
-            <span class="descTag">Pessoal</span>
+            <select class="descOrigem" title="Origem do desconto">
+              <option value="pessoal" ${d.origem !== 'zeleno' ? 'selected' : ''}>Pessoal</option>
+              <option value="zeleno" ${d.origem === 'zeleno' ? 'selected' : ''}>Zeleno</option>
+            </select>
           </div>
         </div>
         <div class="valor">${brl(liquido)}</div>
@@ -744,7 +748,8 @@ function montarRevisao() {
     const aoMudar = () => {
       const tipo = linha.querySelector('.descTipo').value;
       const valor = lerValor(linha.querySelector('.descValor').value);
-      if (valor > 0) estado.descontos.set(id, { tipo, valor });
+      const origem = linha.querySelector('.descOrigem').value;
+      if (valor > 0) estado.descontos.set(id, { tipo, valor, origem });
       else estado.descontos.delete(id);
       const p = estado.produtos.find(x => x.id === id);
       const q = estado.carrinho.get(id) || 1;
@@ -754,6 +759,7 @@ function montarRevisao() {
     };
     linha.querySelector('.descTipo').addEventListener('change', aoMudar);
     linha.querySelector('.descValor').addEventListener('input', aoMudar);
+    linha.querySelector('.descOrigem').addEventListener('change', aoMudar);
   });
   $('#rotCapital').textContent = brl(FRETES.capital);
   $('#rotSedex').textContent = brl(FRETES.sedex);
@@ -838,6 +844,7 @@ $('#btnGerar').addEventListener('click', async () => {
       produtoId: p.id, nome: p.nome, preco: p.preco, quantidade: q, foto: p.foto,
       descontoTipo: d ? d.tipo : null,
       descontoValor: d ? d.valor : 0,
+      descontoOrigem: d ? (d.origem || 'pessoal') : null,
       descontoUn: descontoUnitario(p),
     });
   }
