@@ -1,4 +1,4 @@
-const { sessaoDoRequest, json } = require('./_lib.js');
+const { sessaoDoRequest, catalogoProdutos, casarReceita, json } = require('./_lib.js');
 
 // GET /api/receita?contato=ID&negocio=ID&forcar=1
 // Chama o fluxo do n8n que baixa a(s) receita(s) anexada(s), lê com IA e
@@ -29,6 +29,14 @@ module.exports = async (req, res) => {
     clearTimeout(timer);
     const corpo = await r.json().catch(() => null);
     if (!r.ok || !corpo) return json(res, 502, { ok: false, erro: 'O n8n respondeu com erro (HTTP ' + r.status + ')' });
+
+    // O n8n devolve o que a IA LEU na receita; quem decide o que libera é o
+    // servidor, cruzando com o Grupo de Liberação do catálogo (regra fixa).
+    if (corpo.ok && corpo.status === 'ok' && Array.isArray(corpo.itensReceita)) {
+      const { produtos } = await catalogoProdutos();
+      const casado = casarReceita(corpo.itensReceita, produtos.filter(p => p.ativo));
+      return json(res, 200, { ...corpo, liberados: casado.liberados, grupos: casado.grupos });
+    }
     return json(res, 200, corpo);
   } catch (e) {
     const msg = e.name === 'AbortError' ? 'A leitura da receita demorou demais (mais de 55s)' : e.message;
