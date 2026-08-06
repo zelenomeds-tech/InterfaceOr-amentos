@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/receita.js": { "maxDuration": 60 }
+  }
+}
