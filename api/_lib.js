@@ -136,4 +136,128 @@ async function lerBody(req) {
   try { return JSON.parse(Buffer.concat(partes).toString() || '{}'); } catch { return {}; }
 }
 
-module.exports = { USUARIOS, CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, ownerPorEmail, json, lerBody };
+
+// ---------- CATÁLOGO DE PRODUTOS (Status + Grupo de Liberação) ----------
+function normTexto(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+let cachePropsProduto = { quando: 0, dados: null };
+async function propsProduto() {
+  const agora = Date.now();
+  if (cachePropsProduto.dados && agora - cachePropsProduto.quando < 30 * 60 * 1000) return cachePropsProduto.dados;
+  let propStatus = (process.env.PROP_STATUS_PRODUTO || '').trim();
+  let propGrupo = (process.env.PROP_GRUPO_LIBERACAO || '').trim();
+  if (!propStatus || !propGrupo) {
+    const r = await hs('/crm/v3/properties/products');
+    for (const p of (r.results || [])) {
+      const rot = normTexto(p.label);
+      if (!propStatus && rot === 'status') propStatus = p.name;
+      if (!propGrupo && rot.includes('grupo') && rot.includes('libera')) propGrupo = p.name;
+    }
+    if (!propStatus) for (const p of (r.results || [])) { if (normTexto(p.label).includes('status')) { propStatus = p.name; break; } }
+  }
+  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo } };
+  return cachePropsProduto.dados;
+}
+
+// Catálogo completo com categoria/dominância derivadas do Grupo de Liberação
+// (ex.: ACAMP_FLOR_THC → flor THC) e gramas por unidade extraídas do nome.
+let cacheCatalogo = { quando: 0, dados: null };
+async function catalogoProdutos() {
+  const agora = Date.now();
+  if (cacheCatalogo.dados && agora - cacheCatalogo.quando < 10 * 60 * 1000) return cacheCatalogo.dados;
+  const { propStatus, propGrupo } = await propsProduto();
+  const propriedades = ['name', 'price', 'description', 'hs_sku', 'hs_images'];
+  if (propStatus) propriedades.push(propStatus);
+  if (propGrupo) propriedades.push(propGrupo);
+  const produtos = [];
+  let after = '';
+  do {
+    const pag = await hs('/crm/v3/objects/products?limit=100&archived=false&properties=' + propriedades.join(',') + (after ? '&after=' + after : ''));
+    for (const pr of (pag.results || [])) {
+      const p = pr.properties || {};
+      const preco = parseFloat(p.price);
+      const grupo = String(propGrupo ? (p[propGrupo] || '') : '').toUpperCase().trim();
+      const statusVal = normTexto(propStatus ? (p[propStatus] || '') : '');
+      const mg = String(p.name || '').match(/(\d+(?:[.,]\d+)?)\s*g\b/i);
+      produtos.push({
+        id: String(pr.id),
+        nome: p.name || '(sem nome)',
+        preco: isNaN(preco) ? 0 : preco,
+        sku: p.hs_sku || '',
+        descricao: p.description || '',
+        foto: (p.hs_images || '').split(';')[0].trim(),
+        ativo: propStatus ? statusVal === 'ativo' : true, // só Status = Ativo aparece
+        grupo,
+        categoria: grupo.includes('FLOR') ? 'flor' : grupo.includes('EXTRATO') ? 'extrato' : grupo.includes('OLEO') ? 'oleo' : null,
+        dominancia: grupo.includes('_CBD') ? 'CBD' : grupo.includes('_THC') ? 'THC' : null,
+        gramas: mg ? parseFloat(mg[1].replace(',', '.')) : 5,
+      });
+    }
+    after = pag.paging?.next?.after || '';
+  } while (after);
+  produtos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  cacheCatalogo = { quando: agora, dados: { produtos, propStatus, propGrupo } };
+  return cacheCatalogo.dados;
+}
+
+// ---------- CASAMENTO RECEITA × CATÁLOGO (regra fixa, sem adivinhação) ----------
+// Recebe os itens extraídos da receita pela IA e o catálogo, e decide o que
+// está liberado e os limites de gramas por grupo.
+function casarReceita(itensReceita, produtos) {
+  const normDom = d => {
+    d = String(d || '').toUpperCase();
+    if (d.includes('CBD') && d.includes('THC')) return 'BAL';
+    if (d.includes('BALANC')) return 'BAL';
+    if (d.includes('CBD')) return 'CBD';
+    if (d.includes('THC')) return 'THC';
+    return null; // não especificada na receita
+  };
+  const normCat = c => {
+    c = normTexto(c);
+    if (c.includes('flor') || c.includes('inflor') || c.includes('bud')) return 'flor';
+    if (c.includes('extrat') || c.includes('resin') || c.includes('rosin') || c.includes('hash') || c.includes('concentr')) return 'extrato';
+    if (c.includes('oleo') || c.includes('oil')) return 'oleo';
+    if (c.includes('comest') || c.includes('gummy') || c.includes('gomas')) return 'comestivel';
+    return c || null;
+  };
+  const itens = (itensReceita || [])
+    .map(i => ({
+      descricao: i.descricao || '',
+      cat: normCat(i.categoria),
+      dom: normDom(i.dominancia),
+      gramas: (i.gramas === null || i.gramas === undefined || i.gramas === '') ? null : Number(i.gramas),
+      periodo: i.periodo || '',
+    }))
+    .filter(i => i.cat);
+
+  const grupos = {};
+  for (const i of itens) {
+    const chave = i.cat + '-' + (i.dom || 'any');
+    const nomeCat = i.cat === 'flor' ? 'Flores' : i.cat === 'extrato' ? 'Extratos' : i.cat === 'oleo' ? 'Óleos' : i.cat;
+    const g = { chave, descricao: nomeCat + (i.dom && i.dom !== 'BAL' ? ' ' + i.dom : ''), gramas: i.gramas, periodo: i.periodo };
+    const atual = grupos[chave];
+    // com itens repetidos (mais de uma receita), vale o limite maior; sem limite (null) vence
+    if (!atual) grupos[chave] = g;
+    else if (atual.gramas !== null && (g.gramas === null || g.gramas > atual.gramas)) grupos[chave] = g;
+  }
+
+  const liberados = [];
+  for (const p of produtos) {
+    if (!p.categoria) continue; // produto sem Grupo de Liberação preenchido: não libera
+    const item = itens.find(i =>
+      i.cat === p.categoria &&
+      (!i.dom || i.dom === 'BAL' || !p.dominancia || i.dom === p.dominancia)
+    );
+    if (item) {
+      liberados.push({
+        id: p.id, nome: p.nome,
+        motivo: item.descricao,
+        grupo: item.cat + '-' + (item.dom || 'any'),
+        gramasPorUnidade: p.gramas,
+      });
+    }
+  }
+  return { liberados, grupos: Object.values(grupos) };
+}
+
+module.exports = { USUARIOS, CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, ownerPorEmail, json, lerBody, catalogoProdutos, casarReceita };
