@@ -4,31 +4,6 @@
 // ============================================================
 const crypto = require('crypto');
 
-// ---------- USUÁRIOS ----------
-// Senha NUNCA fica aqui em texto puro: guardamos só o hash SHA-256.
-// Para trocar a senha de alguém: node -e "console.log(require('crypto').createHash('sha256').update('NOVA-SENHA').digest('hex'))"
-// e substitua o hash da pessoa abaixo.
-const USUARIOS = [
-  { email: 'roberta.pinheiro@zelenomeds.com',   hash: '7577b8610b0841d3b966ccb95c1de5473f9b72036d6ac8cd2cd015748cd1117b', papel: 'vendedor' },
-  { email: 'bruno.macedo@zelenomeds.com',       hash: 'bf0827640f758804c6b100a64327d7e418e5a0de0f00d11aa9fe50cca6bd7c62', papel: 'vendedor' },
-  { email: 'ellen.priscila@zelenomeds.com',     hash: '1ec56ecc46acbe072fdb0b225e0a1791620b2a6ec9c77c74a98aa4c87c4421e0', papel: 'vendedor' },
-  { email: 'mariana.santos@zelenomeds.com',     hash: '3667b34cd46b6689c4f8ea31284aec8f7dfd64796bc640887241250a7976f5f5', papel: 'vendedor' },
-  { email: 'ana.beatriz@zelenomeds.com',        hash: '8e929c9cc600fc2d0b0a75452dd85f8e429a94f8f94cd874b84abfe58053856d', papel: 'vendedor' },
-  { email: 'paulo.sousa@zelenomeds.com',        hash: '80aa217a44b242c8166fb25976ad99ea3cc9489512a368cb9059c4c01bf40c27', papel: 'vendedor' },
-  { email: 'rogerio.chiaparini@zelenomeds.com', hash: '0f45d9ed554066f5545812625fcc4b7f59e59da8df35fb9aeb9d18853977f8e6', papel: 'vendedor' },
-  { email: 'danilo.viegas@zelenomeds.com',      hash: '7a198a2be41e25ac6eacbb0a213d17b0a92e6de5729d8302d2e46a840df9eb6b', papel: 'vendedor' },
-  { email: 'bruno.neves@zelenomeds.com',        hash: '2dcbf5fa0b389f9935e4730fdd132144ee226be259791b4deca577a909c5a51b', papel: 'vendedor' },
-  { email: 'danilo.rabelo@zelenomeds.com',      hash: '0a54f83a53abab14f4ba5b71d8cf0d8e78e9295f858d1b822c0f4042d894b36d', papel: 'vendedor' },
-  { email: 'giovanna.marinho@zelenomeds.com',   hash: '39cef6e6924ecf06d3537c1ae29b3d7fa5096787bdea3470aa4c120b3d21188b', papel: 'vendedor' },
-  { email: 'valdez.silva@zelenomeds.com',       hash: '3d5f251263af7b551ffa7aeefc6693a8a5599cea36c775f632ba3789126f58af', papel: 'vendedor' },
-  { email: 'carlos@zelenomeds.com',             hash: '821cd0ef2d1b9a9dba5e4cc7f4c7fd59196307646a84458cdf4a246aad06d8a6', papel: 'vendedor' },
-  { email: 'marina.saad@zelenomeds.com',        hash: 'c8eade2b3a9875bcf28b82a18618a49b8b89d9f58231bf4694cc79138c6991b6', papel: 'vendedor' },
-  { email: 'guilherme.gil@zelenomeds.com',      hash: '24ec21d2f21002fb678222ef9f5903ad16838622dede671eec1e4e610186ac2f', papel: 'vendedor' },
-  { email: 'leonardo.pagani@zelenomeds.com',    hash: '3e86df4c8caef3e13ac5db2d38a0d8e56105966b5213802ef3ed19d1e7286cd2', papel: 'vendedor' },
-  { email: 'luana.ereio@zelenomeds.com',        hash: 'bd6a3a12230da1546e71c238a58cdf17270234e996aec90eff101e94b940696d', papel: 'admin' },
-  { email: 'laysla@zelenomeds.com',             hash: 'c829a2eac18f84e9f97c8e26315b66aa2b72a5dd9875314209db2e75ebc1142d', papel: 'admin' },
-];
-
 // ---------- CONFIG (variáveis de ambiente na Vercel) ----------
 const CFG = {
   token: process.env.HUBSPOT_TOKEN || '',
@@ -100,26 +75,6 @@ async function hs(caminho, opts = {}) {
     throw err;
   }
   return json;
-}
-
-// Descobre o owner do HubSpot pelo e-mail (com cache em memória)
-const cacheOwners = { quando: 0, porEmail: null };
-async function ownerPorEmail(email) {
-  const agora = Date.now();
-  if (!cacheOwners.porEmail || agora - cacheOwners.quando > 10 * 60 * 1000) {
-    const mapa = {};
-    let after = '';
-    do {
-      const pag = await hs('/crm/v3/owners?limit=100' + (after ? '&after=' + after : ''));
-      for (const o of (pag.results || [])) {
-        if (o.email) mapa[o.email.toLowerCase()] = { id: String(o.id), nome: [o.firstName, o.lastName].filter(Boolean).join(' ') };
-      }
-      after = pag.paging?.next?.after || '';
-    } while (after);
-    cacheOwners.porEmail = mapa;
-    cacheOwners.quando = agora;
-  }
-  return cacheOwners.porEmail[String(email).toLowerCase()] || null;
 }
 
 // ---------- respostas ----------
@@ -271,4 +226,4 @@ function casarReceita(itensReceita, produtos) {
   return { liberados, grupos: Object.values(grupos) };
 }
 
-module.exports = { USUARIOS, CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, ownerPorEmail, json, lerBody, catalogoProdutos, casarReceita };
+module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita };
