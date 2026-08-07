@@ -104,22 +104,31 @@ async function propsProduto() {
   let valorAtivo = (process.env.VALOR_STATUS_ATIVO || '').trim();
   const r = await hs('/crm/v3/properties/products');
   const todas = r.results || [];
+
+  // Status: entre as propriedades com "status" no nome, vale a que TEM a
+  // opção "Ativo" dentro dela — assim não confunde com outra propriedade
+  // parecida que exista vazia.
+  const temOpcaoAtivo = p => ((p.options || []).some(o => normTexto(o.label).includes('ativo') && !normTexto(o.label).includes('inativo')));
   if (!propStatus) {
-    const exata = todas.find(p => normTexto(p.label) === 'status');
-    const parcial = todas.find(p => normTexto(p.label).includes('status'));
-    propStatus = (exata || parcial || {}).name || '';
+    const candidatas = todas.filter(p => normTexto(p.label).includes('status'));
+    const comAtivo = candidatas.find(temOpcaoAtivo);
+    const exata = candidatas.find(p => normTexto(p.label) === 'status');
+    propStatus = (comAtivo || exata || candidatas[0] || {}).name || '';
   }
   if (!propGrupo) {
     const g = todas.find(p => normTexto(p.label).includes('grupo') && normTexto(p.label).includes('libera'));
     propGrupo = (g || {}).name || '';
   }
-  // valor interno da opção "Ativo" (o rótulo pode ser Ativo e o valor interno outra coisa)
   if (propStatus && !valorAtivo) {
     const p = todas.find(x => x.name === propStatus);
     const op = ((p && p.options) || []).find(o => normTexto(o.label).includes('ativo') && !normTexto(o.label).includes('inativo'));
     valorAtivo = op ? String(op.value) : 'ativo';
   }
-  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo, valorAtivo } };
+  // para o diagnóstico: todas as candidatas com suas opções
+  const candidatasStatus = todas
+    .filter(p => normTexto(p.label).includes('status'))
+    .map(p => ({ nomeInterno: p.name, rotulo: p.label, opcoes: (p.options || []).map(o => o.label) }));
+  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo, valorAtivo, candidatasStatus } };
   return cachePropsProduto.dados;
 }
 
@@ -162,7 +171,7 @@ async function catalogoProdutos() {
     after = pag.paging?.next?.after || '';
   } while (after);
   produtos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  cacheCatalogo = { quando: agora, dados: { produtos, propStatus, propGrupo, valorAtivo } };
+  cacheCatalogo = { quando: agora, dados: { produtos, propStatus, propGrupo, valorAtivo, candidatasStatus: (await propsProduto()).candidatasStatus } };
   return cacheCatalogo.dados;
 }
 
