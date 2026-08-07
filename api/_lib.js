@@ -49,10 +49,10 @@ function setCookieSessao(res, dados) {
   const exp = Date.now() + CFG.sessaoHoras * 3600 * 1000;
   const token = assinar({ ...dados, exp });
   res.setHeader('Set-Cookie',
-    `zln_sessao=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${CFG.sessaoHoras * 3600}`);
+    `zln_sessao=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${CFG.sessaoHoras * 3600}`);
 }
 function limparCookieSessao(res) {
-  res.setHeader('Set-Cookie', 'zln_sessao=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  res.setHeader('Set-Cookie', 'zln_sessao=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0');
 }
 
 // ---------- HUBSPOT ----------
