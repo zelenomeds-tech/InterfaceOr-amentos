@@ -1,4 +1,4 @@
-const { USUARIOS, CFG, hs, ownerPorEmail, json, catalogoProdutos } = require('./_lib.js');
+const { CFG, hs, json, catalogoProdutos } = require('./_lib.js');
 
 // GET /api/diagnostico — abre no navegador para conferir a instalação.
 // Mostra: variáveis, conexão com o HubSpot, quais e-mails da lista de login
@@ -7,13 +7,15 @@ module.exports = async (req, res) => {
   const variaveis = [
     { nome: 'HUBSPOT_TOKEN', estado: CFG.token ? 'ok' : 'faltando' },
     { nome: 'SESSAO_SECRET', estado: CFG.sessaoSecret ? 'ok' : 'faltando' },
+    { nome: 'PAINEL_CHAVE', estado: (process.env.PAINEL_CHAVE || '').trim() ? 'ok' : 'faltando (é a chave do link do HubSpot)' },
+    { nome: 'N8N_RECEITA_URL', estado: (process.env.N8N_RECEITA_URL || '').trim() ? 'ok' : 'faltando (leitura de receita desligada)' },
     { nome: 'PIPELINE_ID', estado: 'ok', valor: CFG.pipeline },
     { nome: 'ETAPA_ORCAMENTO', estado: 'ok', valor: CFG.etapaOrcamento },
     { nome: 'HUBSPOT_PROP_CPF', estado: 'ok', valor: CFG.propCpf },
     { nome: 'ORIGEM_VALOR', estado: CFG.origemValor ? 'ok' : 'vazio (opcional)', valor: CFG.origemValor },
   ];
 
-  const saida = { ok: true, variaveis, hubspot: { conectado: false }, etapa: null, vendedores: [] };
+  const saida = { ok: true, variaveis, hubspot: { conectado: false }, etapa: null };
 
   if (CFG.token) {
     try {
@@ -66,12 +68,6 @@ module.exports = async (req, res) => {
         saida.modelosOrcamento = 'erro ao listar: ' + e.message + ' — confira se o token tem o escopo de orçamentos (quotes)';
       }
 
-      // Confere quais e-mails do login existem como owner
-      for (const u of USUARIOS) {
-        let owner = null;
-        try { owner = await ownerPorEmail(u.email); } catch { /* já reportado acima */ }
-        saida.vendedores.push({ email: u.email, papel: u.papel, existeNoHubSpot: !!owner });
-      }
     } catch (e) {
       saida.hubspot.erro = e.message;
     }
