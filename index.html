@@ -37,7 +37,7 @@ img{display:block}
 .escondido{display:none!important}
 
 /* ---------- LOGIN ---------- */
-#telaLogin{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+#telaAviso{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(1200px 700px at 70% -10%, #1B573E 0%, var(--mata) 45%, var(--mata-2) 100%)}
 .cartaoLogin{width:100%;max-width:400px;background:var(--branco);border-radius:20px;box-shadow:0 30px 60px rgba(0,0,0,.35);padding:36px 32px}
 .marca{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
@@ -56,6 +56,8 @@ img{display:block}
 .btn-verde:hover{background:#276E50}
 .btn-fantasma{background:transparent;color:var(--folha);border:1.5px solid var(--folha)}
 .btn-claro{background:var(--brotinho);color:var(--mata)}
+.avisoTexto{font-size:15px;line-height:1.55;color:var(--tinta-2);text-align:center;padding:6px 2px}
+.topo .quem span{display:block;font-size:12px;color:#9FC6B1}
 .msgErro{background:#FBEDEA;color:var(--erro);border-radius:10px;padding:10px 12px;font-size:14px;margin-top:12px}
 
 /* ---------- APP ---------- */
@@ -87,32 +89,6 @@ img{display:block}
 .buscaLinha svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;opacity:.45}
 
 /* clientes */
-.listaClientes{display:flex;flex-direction:column;gap:8px}
-.cliente{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:13px 15px;
-  display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s}
-.cliente:hover{border-color:var(--folha)}
-.cliente.sel{border-color:var(--folha);background:var(--brotinho)}
-.cliente .inicial{width:38px;height:38px;border-radius:50%;background:var(--brotinho);color:var(--mata);
-  display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
-.cliente.sel .inicial{background:var(--folha);color:#fff}
-.cliente .info{min-width:0}
-.cliente .info b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cliente .info span{font-size:13px;color:var(--tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-.blocoContato{background:transparent}
-.negociosBox{border:1.5px solid var(--linha);border-top:none;border-radius:0 0 var(--raio) var(--raio);background:#FBFCFA;padding:10px 12px;margin:-6px 0 2px}
-.blocoContato .cliente.aberto{border-radius:var(--raio) var(--raio) 0 0}
-.negTitulo{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-2);margin:2px 0 8px}
-.negLinha{display:flex;align-items:center;gap:10px;border:1.5px solid var(--linha);border-radius:10px;background:var(--branco);padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s}
-.negLinha:hover{border-color:var(--folha)}
-.negLinha.sel{border-color:var(--folha);background:var(--brotinho)}
-.negLinha .negInfo{flex:1;min-width:0}
-.negLinha .negInfo b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.negLinha .negInfo span{font-size:12px;color:var(--tinta-2)}
-.negLinha .etiqueta{font-size:11px;font-weight:700;color:var(--folha);background:var(--brotinho);border-radius:999px;padding:4px 10px;white-space:nowrap}
-.negLinha.travado{opacity:.55;cursor:default}
-.negLinha.travado:hover{border-color:var(--linha)}
-.negLinha.travado .etiqueta{color:var(--tinta-2);background:#EDEFEA}
-
 .fichaCliente{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:18px;margin-top:16px}
 .fichaCliente h3{font-family:var(--display);font-size:16px;color:var(--mata);margin-bottom:12px}
 .gradeFicha{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -257,24 +233,15 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
 </head>
 <body>
 
-<!-- ==================== LOGIN ==================== -->
-<div id="telaLogin">
+<!-- ==================== AVISO (sem login: entrada pelo link do HubSpot) ==================== -->
+<div id="telaAviso">
   <div class="cartaoLogin">
     <div class="marca">
       <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C8 7 5.5 10.5 5.5 14.5A6.5 6.5 0 0 0 12 21a6.5 6.5 0 0 0 6.5-6.5C18.5 10.5 16 7 12 2Zm0 17.2c-.3-2.6-.3-5.2 0-8 .3 2.8.3 5.4 0 8Z" fill="#123B2A"/></svg>
       <b>ZELENO</b>
     </div>
     <p class="sub">Gerador de orçamentos</p>
-    <div class="campo">
-      <label for="inEmail">E-mail</label>
-      <input id="inEmail" type="email" autocomplete="username" placeholder="voce@zelenomeds.com" inputmode="email">
-    </div>
-    <div class="campo">
-      <label for="inSenha">Senha</label>
-      <input id="inSenha" type="password" autocomplete="current-password" placeholder="••••••••">
-    </div>
-    <button class="btn btn-verde" id="btnEntrar">Entrar</button>
-    <div class="msgErro escondido" id="erroLogin"></div>
+    <div class="avisoTexto" id="avisoTexto">Abrindo o negócio…</div>
   </div>
 </div>
 
@@ -287,7 +254,7 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
     </div>
     <div class="quem">
       <b id="nomeVendedor"></b>
-      <button id="btnSair">sair</button>
+      <span id="negocioTopo"></span>
     </div>
   </div>
 
@@ -297,17 +264,11 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
     <div class="passo" data-passo="3"><span class="num">3</span>Revisão</div>
   </div>
 
-  <!-- PASSO 1: CLIENTE -->
+  <!-- PASSO 1: DADOS DO CLIENTE (carregados do negócio aberto) -->
   <div class="conteudo" id="passoCliente">
-    <h2 class="tituloSecao">Para quem é o orçamento?</h2>
-    <p class="subSecao">Busque o cliente e toque nele para ver os negócios dele no HubSpot.</p>
-    <div class="buscaLinha">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="buscaCliente" type="search" placeholder="Nome, e-mail, CPF ou ID do registro">
-    </div>
-    <div id="listaClientes" class="listaClientes"><div class="carregando"><span class="aro"></span>Carregando seus clientes…</div></div>
-
-    <div class="fichaCliente escondido" id="fichaCliente">
+    <h2 class="tituloSecao">Dados do cliente</h2>
+    <p class="subSecao" id="negocioInfo"></p>
+    <div class="fichaCliente" id="fichaCliente">
       <h3>Dados que saem no orçamento</h3>
       <div class="gradeFicha">
         <div class="campo"><label>Nome</label><input id="fNome"></div>
@@ -405,11 +366,9 @@ const escapeHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','
 const FRETES = { sedex: 60, capital: 40 };
 
 const estado = {
-  vendedor: null,
-  clientes: [],
+  vendedor: '',
   contatoSel: null,
   negocioSel: null,
-  negociosDoContato: new Map(), // contatoId -> lista de negócios (cache)
   produtos: [],
   carrinho: new Map(),  // produtoId -> quantidade
   descontos: new Map(), // produtoId -> { tipo: '%' | 'R$', valor: number }
@@ -420,38 +379,35 @@ const estado = {
 async function api(caminho, opts) {
   const r = await fetch(caminho, { credentials: 'same-origin', ...opts });
   const j = await r.json().catch(() => ({ ok:false, erro:'Resposta inválida do servidor' }));
-  if (r.status === 401 && caminho !== '/api/login' && caminho !== '/api/sessao') { mostrarLogin(); }
+  if (r.status === 401 && !caminho.startsWith('/api/abrir')) {
+    mostrarAviso('Sessão expirada — feche esta aba e abra de novo pelo link do negócio no HubSpot.');
+  }
   return j;
 }
 
-/* ---------- login ---------- */
-function mostrarLogin(){ $('#telaLogin').classList.remove('escondido'); $('#app').classList.add('escondido'); }
-function mostrarApp(){ $('#telaLogin').classList.add('escondido'); $('#app').classList.remove('escondido'); }
-
-async function entrar() {
-  const btn = $('#btnEntrar'); btn.disabled = true; btn.textContent = 'Entrando…';
-  $('#erroLogin').classList.add('escondido');
-  const j = await api('/api/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: $('#inEmail').value, senha: $('#inSenha').value }),
-  });
-  btn.disabled = false; btn.textContent = 'Entrar';
-  if (!j.ok) { const e = $('#erroLogin'); e.textContent = j.erro || 'Não foi possível entrar'; e.classList.remove('escondido'); return; }
-  iniciarApp(j);
+/* ---------- entrada pelo link do HubSpot ---------- */
+function mostrarAviso(msg) {
+  $('#telaAviso').classList.remove('escondido');
+  $('#app').classList.add('escondido');
+  $('#avisoTexto').textContent = msg;
 }
-$('#btnEntrar').addEventListener('click', entrar);
-$('#inSenha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
-
-$('#btnSair').addEventListener('click', async () => { await api('/api/sair', { method: 'POST' }); location.reload(); });
+function mostrarApp() { $('#telaAviso').classList.add('escondido'); $('#app').classList.remove('escondido'); }
 
 /* ---------- app ---------- */
-function iniciarApp(sessao) {
-  estado.vendedor = sessao;
-  $('#nomeVendedor').textContent = sessao.nome || sessao.email;
+function iniciarApp(d) {
+  estado.vendedor = d.vendedor || '';
+  estado.contatoSel = d.cliente;
+  estado.negocioSel = d.negocio;
+  $('#nomeVendedor').textContent = d.vendedor || 'Zeleno';
+  $('#negocioTopo').textContent = d.negocio.nome;
+  $('#negocioInfo').textContent = 'Negócio: ' + d.negocio.nome + ' — confira os dados antes de gerar.';
+  const c = d.cliente;
+  $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
+  $('#fCep').value = mascaraCep(c.cep || '');
   mostrarApp();
-  irParaPasso(1);
-  carregarClientes('');
   carregarProdutos();
+  carregarReceita(false);
+  irParaPasso(2); // já cai direto nos produtos; o passo 1 fica para conferir/editar os dados
 }
 
 function irParaPasso(n) {
@@ -470,93 +426,9 @@ function irParaPasso(n) {
 }
 document.querySelectorAll('.passo').forEach(p => p.addEventListener('click', () => {
   const n = +p.dataset.passo;
-  if (n === 1) irParaPasso(1);
-  if (n === 2 && estado.negocioSel) irParaPasso(2);
-  if (n === 3 && estado.negocioSel && estado.carrinho.size) irParaPasso(3);
+  if (n === 1 || n === 2) irParaPasso(n);
+  if (n === 3 && estado.carrinho.size) irParaPasso(3);
 }));
-
-/* ---------- contatos e negócios ---------- */
-let timerBusca = null;
-$('#buscaCliente').addEventListener('input', e => {
-  clearTimeout(timerBusca);
-  timerBusca = setTimeout(() => carregarClientes(e.target.value.trim()), 350);
-});
-
-async function carregarClientes(busca) {
-  const lista = $('#listaClientes');
-  lista.innerHTML = '<div class="carregando"><span class="aro"></span>Buscando…</div>';
-  const j = await api('/api/clientes' + (busca ? '?busca=' + encodeURIComponent(busca) : ''));
-  if (!j.ok) { lista.innerHTML = '<div class="vazio">' + escapeHtml(j.erro || 'Não foi possível carregar') + '</div>'; return; }
-  estado.clientes = j.clientes;
-  if (!j.clientes.length) { lista.innerHTML = '<div class="vazio">' + escapeHtml(j.aviso || 'Nenhum cliente encontrado. Ajuste a busca.') + '</div>'; return; }
-  lista.innerHTML = j.clientes.map(c => `
-    <div class="blocoContato" data-id="${c.id}">
-      <div class="cliente" data-id="${c.id}">
-        <div class="inicial">${escapeHtml((c.nome || '?').trim().charAt(0).toUpperCase())}</div>
-        <div class="info"><b>${escapeHtml(c.nome)}</b><span>${escapeHtml([c.email, c.telefone].filter(Boolean).join(' · ') || 'sem contato cadastrado')}</span></div>
-      </div>
-      <div class="negociosBox escondido"></div>
-    </div>`).join('');
-  lista.querySelectorAll('.cliente').forEach(el => el.addEventListener('click', () => abrirNegociosDoContato(el.dataset.id)));
-}
-
-async function abrirNegociosDoContato(contatoId) {
-  const bloco = document.querySelector('.blocoContato[data-id="' + contatoId + '"]');
-  const box = bloco.querySelector('.negociosBox');
-  const card = bloco.querySelector('.cliente');
-
-  // fecha os outros
-  document.querySelectorAll('.negociosBox').forEach(b => { if (b !== box) b.classList.add('escondido'); });
-  document.querySelectorAll('.cliente').forEach(c => { if (c !== card) c.classList.remove('aberto'); });
-
-  const jaAberto = !box.classList.contains('escondido');
-  if (jaAberto) { box.classList.add('escondido'); card.classList.remove('aberto'); return; }
-  box.classList.remove('escondido'); card.classList.add('aberto');
-
-  let negocios = estado.negociosDoContato.get(contatoId);
-  if (!negocios) {
-    box.innerHTML = '<div class="carregando" style="padding:14px 0"><span class="aro"></span>Buscando os negócios…</div>';
-    const j = await api('/api/negocios?contato=' + contatoId);
-    if (!j.ok) { box.innerHTML = '<div class="vazio" style="padding:14px 0">' + escapeHtml(j.erro || 'Não foi possível carregar') + '</div>'; return; }
-    negocios = j.negocios;
-    estado.negociosDoContato.set(contatoId, negocios);
-  }
-  desenharNegocios(contatoId, box, negocios);
-}
-
-function desenharNegocios(contatoId, box, negocios) {
-  if (!negocios.length) {
-    box.innerHTML = '<div class="vazio" style="padding:14px 0">Esse cliente não tem negócio no HubSpot. Crie o negócio lá primeiro.</div>';
-    return;
-  }
-  box.innerHTML = '<div class="negTitulo">Escolha o negócio que recebe o orçamento</div>' + negocios.map(n => `
-    <div class="negLinha ${n.selecionavel ? '' : 'travado'} ${estado.negocioSel && estado.negocioSel.id === n.id ? 'sel' : ''}" data-id="${n.id}">
-      <div class="negInfo"><b>${escapeHtml(n.nome)}</b><span>${escapeHtml(n.pipeline)}${n.valor ? ' · ' + brl(n.valor) : ''}</span></div>
-      <span class="etiqueta">${escapeHtml(n.etapa)}</span>
-    </div>`).join('');
-  box.querySelectorAll('.negLinha:not(.travado)').forEach(el =>
-    el.addEventListener('click', () => escolherNegocio(contatoId, el.dataset.id)));
-}
-
-function escolherNegocio(contatoId, negocioId) {
-  const c = estado.clientes.find(x => x.id === contatoId);
-  const n = (estado.negociosDoContato.get(contatoId) || []).find(x => x.id === negocioId);
-  if (!c || !n) return;
-  const trocouCliente = !estado.contatoSel || estado.contatoSel.id !== contatoId;
-  estado.contatoSel = c;
-  estado.negocioSel = n;
-  if (trocouCliente) {
-    estado.carrinho.clear();
-    estado.descontos.clear();
-    carregarReceita(false);
-  }
-  document.querySelectorAll('.negLinha').forEach(el => el.classList.toggle('sel', el.dataset.id === negocioId));
-  $('#fichaCliente').classList.remove('escondido');
-  $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
-  $('#fCep').value = mascaraCep(c.cep || '');
-  atualizarCupom();
-  $('#fichaCliente').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
 
 /* ---------- receita ---------- */
 async function carregarReceita(forcar) {
@@ -715,10 +587,9 @@ function atualizarCupom() {
   const cupom = $('#cupom');
   const { subtotal, qtdItens } = totaisAtuais();
   if (estado.passo === 1) {
-    if (!estado.negocioSel) { cupom.classList.add('escondido'); return; }
     cupom.classList.remove('escondido');
-    $('#cupomItens').textContent = estado.negocioSel.etapa;
-    $('#cupomTotal').textContent = ((estado.contatoSel && estado.contatoSel.nome) || estado.negocioSel.nome).split(' ')[0];
+    $('#cupomItens').textContent = 'Cliente';
+    $('#cupomTotal').textContent = (estado.contatoSel && estado.contatoSel.nome || '').split(' ')[0];
     $('#btnCupom').textContent = 'Escolher produtos';
   } else if (estado.passo === 2) {
     if (!estado.carrinho.size) { cupom.classList.add('escondido'); return; }
@@ -985,26 +856,26 @@ $('#btnNovoOrc').addEventListener('click', () => {
   $('#telaDoc').classList.add('escondido');
   estado.carrinho.clear();
   estado.descontos.clear();
-  estado.receita = null;
-  estado.negocioSel = null;
-  estado.contatoSel = null;
-  estado.negociosDoContato.clear();
-  $('#fichaCliente').classList.add('escondido');
   $('#inFrete').value = '';
-  $('#inCep').value = ''; $('#fCep').value = ''; ultimoCepConsultado = '';
-  $('#cepStatus').textContent = ''; $('#cepStatus').className = 'cepStatus';
   document.querySelectorAll('input[name="tipoFrete"]').forEach(r => r.checked = false);
-  $('#buscaCliente').value = ''; $('#buscaProduto').value = '';
+  $('#buscaProduto').value = '';
   desenharProdutos('');
-  desenharBannerReceita();
-  carregarClientes('');
-  irParaPasso(1);
+  irParaPasso(2);
 });
 
-/* ---------- sessão ao abrir ---------- */
+/* ---------- abrir pelo link do negócio ---------- */
 (async () => {
-  const s = await api('/api/sessao');
-  if (s.ok) iniciarApp(s);
+  const params = new URLSearchParams(location.search);
+  const negocio = (params.get('negocio') || '').replace(/\D/g, '');
+  const chave = params.get('chave') || '';
+  if (!negocio) {
+    mostrarAviso('Esta página abre pelo negócio no HubSpot: dentro do negócio, clique no link "Gerar orçamento" (propriedade link_orcamento).');
+    return;
+  }
+  mostrarAviso('Abrindo o negócio…');
+  const j = await api('/api/abrir?negocio=' + negocio + '&chave=' + encodeURIComponent(chave));
+  if (!j.ok) { mostrarAviso(j.erro || 'Não foi possível abrir o negócio.'); return; }
+  iniciarApp(j);
 })();
 </script>
 </body>
