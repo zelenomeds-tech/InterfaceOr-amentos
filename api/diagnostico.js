@@ -31,11 +31,12 @@ module.exports = async (req, res) => {
 
       // Catálogo: Status e Grupo de Liberação detectados + contagens
       try {
-        const { produtos, propStatus, propGrupo, valorAtivo } = await catalogoProdutos();
+        const { produtos, propStatus, propGrupo, valorAtivo, candidatasStatus } = await catalogoProdutos();
         const contagemStatus = {};
         for (const p of produtos) { const v = p.statusBruto || '(vazio)'; contagemStatus[v] = (contagemStatus[v] || 0) + 1; }
         saida.catalogo = {
           propriedadeStatus: propStatus || '⚠️ não encontrada (todos os produtos aparecem)',
+          propriedadesComStatusNoNome: candidatasStatus,
           valorConsideradoAtivo: valorAtivo || '',
           valoresDeStatusEncontrados: contagemStatus,
           propriedadeGrupo: propGrupo || '⚠️ não encontrada (nenhum produto casa com a receita)',
