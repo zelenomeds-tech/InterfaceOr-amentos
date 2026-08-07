@@ -46,6 +46,9 @@ module.exports = async (req, res) => {
 
   const { negocioId, contatoId, itens, frete, freteNome } = await lerBody(req);
   if (!negocioId) return json(res, 400, { ok: false, erro: 'Escolha o negócio' });
+  if (s.negocioId && String(s.negocioId) !== String(negocioId)) {
+    return json(res, 403, { ok: false, erro: 'Este acesso só permite gerar orçamento para o negócio aberto pelo link do HubSpot' });
+  }
   if (!Array.isArray(itens) || !itens.length) return json(res, 400, { ok: false, erro: 'Adicione ao menos um produto' });
 
   const nFrete = Math.max(0, parseFloat(frete) || 0);
