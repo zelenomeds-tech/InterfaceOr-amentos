@@ -116,6 +116,8 @@ img{display:block}
 .prodLinha .meio{flex:1;min-width:0}
 .prodLinha .meio b{display:block;font-size:14px;line-height:1.3}
 .prodLinha .meio .preco{font-family:var(--display);font-weight:700;font-size:15px;color:var(--mata)}
+.prodLinha .limReceita{display:block;font-size:12px;font-weight:600;color:var(--folha);margin-top:2px}
+.prodLinha .limReceita.noLimite{color:var(--erro)}
 .prodLinha .acao{flex-shrink:0;width:150px;display:flex;justify-content:flex-end}
 .prodLinha .acao .stepper{width:100%}
 .prodLinha .acao .btnAdd{width:100%}
@@ -485,6 +487,20 @@ function gramasNoGrupo(chave) {
   return soma;
 }
 
+// texto "Receita: até X un · restam Y" para a linha do produto
+function textoLimiteReceita(p) {
+  const r = estado.receita;
+  if (!r || r.status !== 'ok' || !r.info) return '';
+  const inf = r.info[p.id];
+  if (!inf || !inf.grupo) return '';
+  const grupo = r.grupos && r.grupos[inf.grupo];
+  if (!grupo || grupo.gramas === null || !(grupo.gramas > 0)) return 'Receita: sem limite de quantidade';
+  const totalUn = Math.floor(grupo.gramas / inf.gPorUn);
+  const restamUn = Math.max(0, Math.floor((grupo.gramas - gramasNoGrupo(inf.grupo)) / inf.gPorUn));
+  const periodo = grupo.periodo ? '/' + grupo.periodo : '';
+  return 'Receita: até ' + totalUn + ' un (' + grupo.gramas + 'g' + periodo + ') · restam ' + restamUn;
+}
+
 // dá para adicionar mais 1 unidade deste produto sem estourar a receita?
 function podeAdicionarMais(p) {
   const r = estado.receita;
@@ -547,6 +563,7 @@ function desenharProdutos(filtro) {
       <div class="meio">
         <b>${escapeHtml(p.nome)}</b>
         <span class="preco">${brl(p.preco)}</span>
+        ${liberado && textoLimiteReceita(p) ? `<span class="limReceita ${!cabeMais ? 'noLimite' : ''}">${escapeHtml(textoLimiteReceita(p))}</span>` : ''}
       </div>
       <div class="acao">
         ${!liberado
