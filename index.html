@@ -89,8 +89,15 @@ img{display:block}
 .buscaLinha svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;opacity:.45}
 
 /* clientes */
-.fichaCliente{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:18px;margin-top:16px}
-.fichaCliente h3{font-family:var(--display);font-size:16px;color:var(--mata);margin-bottom:12px}
+.cabCliente{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:12px 14px;margin-bottom:16px}
+.cabLinha{display:flex;align-items:center;gap:12px}
+.cabCliente .inicial{width:40px;height:40px;border-radius:50%;background:var(--brotinho);color:var(--mata);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.cabInfo{flex:1;min-width:0}
+.cabInfo b{display:block;font-size:15px}
+.cabInfo span{display:block;font-size:13px;color:var(--tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cabEditar{background:none;border:1.5px solid var(--linha);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--tinta-2)}
+.cabEditar:hover{border-color:var(--folha);color:var(--folha)}
+.fichaCliente{border-top:1.5px solid var(--linha);padding-top:14px;margin-top:12px}
 .gradeFicha{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:560px){.gradeFicha{grid-template-columns:1fr}}
 
@@ -267,31 +274,32 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
   </div>
 
   <div class="passos">
-    <div class="passo ativo" data-passo="1"><span class="num">1</span>Cliente</div>
-    <div class="passo" data-passo="2"><span class="num">2</span>Produtos</div>
-    <div class="passo" data-passo="3"><span class="num">3</span>Revisão</div>
-  </div>
-
-  <!-- PASSO 1: DADOS DO CLIENTE (carregados do negócio aberto) -->
-  <div class="conteudo" id="passoCliente">
-    <h2 class="tituloSecao">Dados do cliente</h2>
-    <p class="subSecao" id="negocioInfo"></p>
-    <div class="fichaCliente" id="fichaCliente">
-      <h3>Dados que saem no orçamento</h3>
-      <div class="gradeFicha">
-        <div class="campo"><label>Nome</label><input id="fNome"></div>
-        <div class="campo"><label>CPF</label><input id="fCpf" inputmode="numeric"></div>
-        <div class="campo"><label>E-mail</label><input id="fEmail" inputmode="email"></div>
-        <div class="campo"><label>Telefone</label><input id="fTelefone" inputmode="tel"></div>
-        <div class="campo"><label>CEP de entrega</label><input id="fCep" inputmode="numeric" placeholder="00000-000"></div>
-      </div>
-    </div>
+    <div class="passo ativo" data-passo="2"><span class="num">1</span>Produtos</div>
+    <div class="passo" data-passo="3"><span class="num">2</span>Revisão</div>
   </div>
 
   <!-- PASSO 2: PRODUTOS -->
   <div class="conteudo escondido" id="passoProdutos">
+    <div class="cabCliente" id="cabCliente">
+      <div class="cabLinha">
+        <div class="inicial" id="cabInicial"></div>
+        <div class="cabInfo">
+          <b id="cabNome"></b>
+          <span id="cabDetalhes"></span>
+        </div>
+        <button class="cabEditar" id="btnEditarCliente">editar</button>
+      </div>
+      <div class="fichaCliente escondido" id="fichaCliente">
+        <div class="gradeFicha">
+          <div class="campo"><label>Nome</label><input id="fNome"></div>
+          <div class="campo"><label>CPF</label><input id="fCpf" inputmode="numeric"></div>
+          <div class="campo"><label>E-mail</label><input id="fEmail" inputmode="email"></div>
+          <div class="campo"><label>Telefone</label><input id="fTelefone" inputmode="tel"></div>
+          <div class="campo"><label>CEP de entrega</label><input id="fCep" inputmode="numeric" placeholder="00000-000"></div>
+        </div>
+      </div>
+    </div>
     <h2 class="tituloSecao">Produtos</h2>
-    <p class="subSecao">Preços e fotos direto do HubSpot.</p>
     <div id="receitaBanner" class="receitaBanner escondido"></div>
     <div class="buscaLinha">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -408,15 +416,35 @@ function iniciarApp(d) {
   estado.negocioSel = d.negocio;
   $('#nomeVendedor').textContent = d.vendedor || 'Zeleno';
   $('#negocioTopo').textContent = d.negocio.nome;
-  $('#negocioInfo').textContent = 'Negócio: ' + d.negocio.nome + ' — confira os dados antes de gerar.';
   const c = d.cliente;
   $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
   $('#fCep').value = mascaraCep(c.cep || '');
+  atualizarCabecalhoCliente();
   mostrarApp();
   carregarProdutos();
   carregarReceita(false);
-  irParaPasso(2); // já cai direto nos produtos; o passo 1 fica para conferir/editar os dados
+  irParaPasso(2);
 }
+
+function atualizarCabecalhoCliente() {
+  const nome = $('#fNome').value || '(sem nome)';
+  $('#cabInicial').textContent = nome.trim().charAt(0).toUpperCase();
+  $('#cabNome').textContent = nome;
+  $('#cabDetalhes').textContent = [
+    $('#fCpf').value && 'CPF ' + $('#fCpf').value,
+    $('#fTelefone').value,
+    $('#fCep').value && 'CEP ' + $('#fCep').value,
+    estado.negocioSel && estado.negocioSel.nome,
+  ].filter(Boolean).join(' · ');
+}
+$('#btnEditarCliente').addEventListener('click', () => {
+  const f = $('#fichaCliente');
+  const abrindo = f.classList.contains('escondido');
+  f.classList.toggle('escondido');
+  $('#btnEditarCliente').textContent = abrindo ? 'fechar' : 'editar';
+});
+['fNome', 'fCpf', 'fEmail', 'fTelefone', 'fCep'].forEach(id =>
+  $('#' + id).addEventListener('input', atualizarCabecalhoCliente));
 
 function irParaPasso(n) {
   estado.passo = n;
@@ -425,7 +453,6 @@ function irParaPasso(n) {
     p.classList.toggle('ativo', num === n);
     p.classList.toggle('feito', num < n);
   });
-  $('#passoCliente').classList.toggle('escondido', n !== 1);
   $('#passoProdutos').classList.toggle('escondido', n !== 2);
   $('#passoRevisao').classList.toggle('escondido', n !== 3);
   atualizarCupom();
@@ -434,7 +461,7 @@ function irParaPasso(n) {
 }
 document.querySelectorAll('.passo').forEach(p => p.addEventListener('click', () => {
   const n = +p.dataset.passo;
-  if (n === 1 || n === 2) irParaPasso(n);
+  if (n === 2) irParaPasso(2);
   if (n === 3 && estado.carrinho.size) irParaPasso(3);
 }));
 
@@ -611,12 +638,7 @@ function lerValor(t){ const n = parseFloat(String(t||'').replace(/\./g,'').repla
 function atualizarCupom() {
   const cupom = $('#cupom');
   const { subtotal, qtdItens } = totaisAtuais();
-  if (estado.passo === 1) {
-    cupom.classList.remove('escondido');
-    $('#cupomItens').textContent = 'Cliente';
-    $('#cupomTotal').textContent = (estado.contatoSel && estado.contatoSel.nome || '').split(' ')[0];
-    $('#btnCupom').textContent = 'Escolher produtos';
-  } else if (estado.passo === 2) {
+  if (estado.passo === 2) {
     if (!estado.carrinho.size) { cupom.classList.add('escondido'); return; }
     cupom.classList.remove('escondido');
     $('#cupomItens').textContent = qtdItens + (qtdItens === 1 ? ' item' : ' itens');
@@ -626,10 +648,7 @@ function atualizarCupom() {
     cupom.classList.add('escondido');
   }
 }
-$('#btnCupom').addEventListener('click', () => {
-  if (estado.passo === 1) irParaPasso(2);
-  else if (estado.passo === 2) irParaPasso(3);
-});
+$('#btnCupom').addEventListener('click', () => { if (estado.passo === 2) irParaPasso(3); });
 
 /* ---------- revisão ---------- */
 function montarRevisao() {
