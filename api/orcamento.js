@@ -116,6 +116,14 @@ module.exports = async (req, res) => {
     totalDescontos += descUn * qtd;
     return props;
   });
+  // TRAVA DE DESCONTO: a soma dos descontos não pode passar de 20% do subtotal
+  // (ajustável sem código: variável LIMITE_DESCONTO_PCT na Vercel)
+  const limitePct = parseFloat(process.env.LIMITE_DESCONTO_PCT) || 20;
+  const limiteDesconto = subtotal * limitePct / 100;
+  if (totalDescontos > limiteDesconto + 0.01) {
+    return json(res, 400, { ok: false, erro: 'Descontos somam R$ ' + totalDescontos.toFixed(2) + ', acima do limite de ' + limitePct + '% do subtotal (máx R$ ' + limiteDesconto.toFixed(2) + ').' });
+  }
+
   const total = Math.max(0, subtotal - totalDescontos + nFrete);
   const dataBr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
