@@ -1,4 +1,4 @@
-const { sessaoDoRequest, catalogoProdutos, json } = require('./_lib.js');
+const { sessaoDoRequest, catalogoProdutos, produtosVendaveis, json } = require('./_lib.js');
 
 // GET /api/produtos — biblioteca de produtos do HubSpot (nome, preço, foto)
 // Mostra SOMENTE produtos com Status = Ativo. A propriedade Status e o Grupo
@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
 
   try {
     const { produtos } = await catalogoProdutos();
-    const ativos = produtos.filter(p => p.ativo);
+    const ativos = produtosVendaveis(produtos);
     // Válvula de segurança: se o filtro de Status zerar um catálogo que existe,
     // é sinal de propriedade/valor errado — mostra todos em vez de travar a
     // operação, e o /api/diagnostico aponta o ajuste (PROP_STATUS_PRODUTO /
