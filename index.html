@@ -168,8 +168,8 @@ img{display:block}
 .cepStatus{font-size:13px;color:var(--tinta-2);margin-top:6px;min-height:18px}
 .cepStatus.ok{color:var(--folha);font-weight:600}
 .cepStatus.ruim{color:var(--erro);font-weight:600}
-.opcoesFrete{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-@media(max-width:560px){.opcoesFrete{grid-template-columns:1fr}}
+.opcoesFrete{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+@media(max-width:640px){.opcoesFrete{grid-template-columns:1fr}}
 .opFrete{display:flex;align-items:center;gap:10px;border:1.5px solid var(--linha);border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s}
 .opFrete:has(input:checked){border-color:var(--folha);background:var(--brotinho)}
 .opFrete input{accent-color:var(--folha);width:18px;height:18px}
@@ -329,6 +329,10 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
           <input type="radio" name="tipoFrete" value="sedex">
           <span class="opTexto"><b>Sedex</b><small id="rotSedex"></small></span>
         </label>
+        <label class="opFrete" data-tipo="exclusivo">
+          <input type="radio" name="tipoFrete" value="exclusivo">
+          <span class="opTexto"><b>Exclusivo</b><small id="rotExclusivo"></small></span>
+        </label>
       </div>
     </div>
     <div class="ajustes">
@@ -379,7 +383,7 @@ const escapeHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','
 /* ⚠️ VALORES DE FRETE — ajuste aqui se mudarem:
    sedex   = qualquer cidade fora de São Paulo capital
    capital = CEP da cidade de São Paulo */
-const FRETES = { sedex: 60, capital: 40 };
+const FRETES = { sedex: 60, capital: 40, exclusivo: 0 }; // ⚠️ exclusivo: valor a definir
 
 const estado = {
   vendedor: '',
@@ -708,6 +712,7 @@ function montarRevisao() {
   });
   $('#rotCapital').textContent = brl(FRETES.capital);
   $('#rotSedex').textContent = brl(FRETES.sedex);
+  $('#rotExclusivo').textContent = brl(FRETES.exclusivo);
   const cepFicha = $('#fCep').value;
   if (cepFicha && $('#inCep').value !== cepFicha) { $('#inCep').value = cepFicha; consultarCep(); }
   else if (cepFicha && !document.querySelector('input[name="tipoFrete"]:checked')) { consultarCep(); }
@@ -747,7 +752,9 @@ async function consultarCep() {
 function nomeFreteEscolhido() {
   const sel = document.querySelector('input[name="tipoFrete"]:checked');
   if (!sel) return 'Frete';
-  return sel.value === 'capital' ? 'Frete - Entrega SP capital' : 'Frete - Sedex';
+  if (sel.value === 'capital') return 'Frete - Entrega SP capital';
+  if (sel.value === 'exclusivo') return 'Frete - Exclusivo';
+  return 'Frete - Sedex';
 }
 function marcarFrete(tipo) {
   const radio = document.querySelector('input[name="tipoFrete"][value="' + tipo + '"]');
@@ -872,7 +879,7 @@ function abrirDocumento(d) {
         <div class="docTotais">
           <div class="li"><span>Subtotal</span><b>${brl(d.subtotal)}</b></div>
           ${d.descontos ? `<div class="li"><span>Descontos</span><b>− ${brl(d.descontos)}</b></div>` : ''}
-          ${d.frete ? `<div class="li"><span>${escapeHtml((d.freteNome || 'Frete').replace('Frete - ', 'Frete (') + (d.freteNome && d.freteNome !== 'Frete' ? ')' : ''))}</span><b>${brl(d.frete)}</b></div>` : ''}
+          ${(d.frete || (d.freteNome && d.freteNome !== 'Frete')) ? `<div class="li"><span>${escapeHtml((d.freteNome || 'Frete').replace('Frete - ', 'Frete (') + (d.freteNome && d.freteNome !== 'Frete' ? ')' : ''))}</span><b>${brl(d.frete)}</b></div>` : ''}
           <div class="liTotal"><span>Total</span><b>${brl(d.total)}</b></div>
         </div>
       </div>
