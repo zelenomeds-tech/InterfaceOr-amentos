@@ -103,6 +103,12 @@ img{display:block}
 
 /* produtos */
 /* receita */
+.orcAnteriores{background:#FBF4E4;border:1.5px solid #E4CE96;color:#7A5B12;border-radius:12px;padding:11px 14px;font-size:14px;margin-bottom:14px}
+.orcAnteriores .ver{background:none;border:none;padding:0;font-size:13px;text-decoration:underline;color:inherit;margin-left:6px}
+.orcAnteriores ul{list-style:none;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.orcAnteriores li{display:flex;gap:10px;align-items:center;font-size:13px;background:#fff;border-radius:8px;padding:8px 10px}
+.orcAnteriores li a{color:var(--folha);font-weight:700}
+.caixaTotais .li.estourou span,.caixaTotais .li.estourou b{color:#FFB3A5}
 .receitaBanner{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:14px;line-height:1.45;border:1.5px solid}
 .receitaBanner.lendo{background:#F3F6F2;border-color:var(--linha);color:var(--tinta-2)}
 .receitaBanner.ok{background:var(--brotinho);border-color:var(--folha);color:var(--mata)}
@@ -385,6 +391,7 @@ const escapeHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','
    sedex   = qualquer cidade fora de São Paulo capital
    capital = CEP da cidade de São Paulo */
 const FRETES = { sedex: 60, capital: 40, exclusivo: 0 }; // ⚠️ exclusivo: valor a definir
+const LIMITE_DESCONTO_PCT = 20; // ⚠️ trava: descontos até 20% do subtotal (igual no servidor)
 
 const estado = {
   vendedor: '',
@@ -425,10 +432,31 @@ function iniciarApp(d) {
   $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
   $('#fCep').value = mascaraCep(c.cep || '');
   atualizarCabecalhoCliente();
+  desenharOrcAnteriores(d.orcamentosAnteriores || []);
   mostrarApp();
   carregarProdutos();
   carregarReceita(false);
   irParaPasso(2);
+}
+
+function desenharOrcAnteriores(lista) {
+  const box = $('#orcAnteriores');
+  if (!lista.length) { box.classList.add('escondido'); return; }
+  const dataBr = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
+  const ultimo = dataBr(lista[0].criadoEm);
+  box.classList.remove('escondido');
+  box.innerHTML = '⚠️ Este negócio já tem <b>' + lista.length + (lista.length === 1 ? ' orçamento' : ' orçamentos') + '</b>'
+    + (ultimo ? ' — último em ' + ultimo : '')
+    + '. Gerar de novo substitui os itens do negócio.'
+    + ' <button class="ver" id="btnVerOrcs">ver</button><ul class="escondido" id="listaOrcs"></ul>';
+  $('#listaOrcs').innerHTML = lista.map(o => `
+    <li><span>${dataBr(o.criadoEm)}</span>${o.valor ? '<span><b>' + brl(o.valor) + '</b></span>' : ''}<span style="flex:1"></span>${o.link ? `<a href="${escapeHtml(o.link)}" target="_blank" rel="noopener">abrir</a>` : ''}</li>`).join('');
+  $('#btnVerOrcs').addEventListener('click', () => {
+    const l = $('#listaOrcs');
+    const abrindo = l.classList.contains('escondido');
+    l.classList.toggle('escondido');
+    $('#btnVerOrcs').textContent = abrindo ? 'esconder' : 'ver';
+  });
 }
 
 function atualizarCabecalhoCliente() {
@@ -774,6 +802,19 @@ function atualizarTotaisRevisao() {
   $('#tDesconto').textContent = descontos ? '− ' + brl(descontos) : '—';
   $('#tFrete').textContent = frete ? brl(frete) : '—';
   $('#tTotal').textContent = brl(total);
+  // trava: descontos até LIMITE_DESCONTO_PCT% do subtotal
+  const limite = subtotal * LIMITE_DESCONTO_PCT / 100;
+  const estourou = descontos > limite + 0.005;
+  document.querySelector('.caixaTotais .li:nth-child(2)').classList.toggle('estourou', estourou);
+  const btn = $('#btnGerar');
+  btn.disabled = estourou;
+  const aviso = $('#erroGerar');
+  if (estourou) {
+    aviso.textContent = 'Descontos somam ' + brl(descontos) + ' — acima do limite de ' + LIMITE_DESCONTO_PCT + '% do subtotal (máximo ' + brl(limite) + '). Reduza para gerar.';
+    aviso.classList.remove('escondido');
+  } else if (aviso.textContent.startsWith('Descontos somam')) {
+    aviso.classList.add('escondido');
+  }
 }
 $('#inFrete').addEventListener('input', atualizarTotaisRevisao);
 $('#btnVoltarProdutos').addEventListener('click', () => irParaPasso(2));
