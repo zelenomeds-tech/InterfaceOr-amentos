@@ -146,7 +146,9 @@ module.exports = async (req, res) => {
 
     const inputs = propriedadesItens.map(props => ({ properties: props, associations: assoc }));
 
-    if (nFrete > 0) {
+    // entra como item de linha se tem valor OU se uma modalidade foi escolhida
+    // (ex.: "Frete - Exclusivo" a R$ 0 fica registrado no negócio mesmo assim)
+    if (nFrete > 0 || (freteNome && freteNome !== 'Frete')) {
       inputs.push({
         properties: { name: String(freteNome || 'Frete').slice(0, 100), quantity: '1', price: nFrete.toFixed(2) },
         associations: assoc,
