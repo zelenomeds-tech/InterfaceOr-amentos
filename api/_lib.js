@@ -176,6 +176,18 @@ async function catalogoProdutos() {
   return cacheCatalogo.dados;
 }
 
+// ---------- PRODUTOS VENDÁVEIS ----------
+// ⚠️ FILTRO DE NOME: por decisão da operação, o painel só mostra produtos
+// cujo nome contém "anova" (tem itens Ativos no HubSpot que não podem ser
+// desativados lá). Para mudar sem código: variável FILTRO_NOME_PRODUTO na
+// Vercel — outro texto filtra por ele; o valor "todos" desliga o filtro.
+function produtosVendaveis(produtos) {
+  const filtro = normTexto((process.env.FILTRO_NOME_PRODUTO || 'anova').trim());
+  const ativos = produtos.filter(p => p.ativo);
+  if (!filtro || filtro === 'todos') return ativos;
+  return ativos.filter(p => normTexto(p.nome).includes(filtro));
+}
+
 // ---------- CASAMENTO RECEITA × CATÁLOGO (regra fixa, sem adivinhação) ----------
 // Recebe os itens extraídos da receita pela IA e o catálogo, e decide o que
 // está liberado e os limites de gramas por grupo.
@@ -236,4 +248,4 @@ function casarReceita(itensReceita, produtos) {
   return { liberados, grupos: Object.values(grupos) };
 }
 
-module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita };
+module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita, produtosVendaveis };
