@@ -17,7 +17,7 @@
   --folha:#2E7D5B; --folha-viva:#37946C;
   --brotinho:#DFF0E5; --brotinho-2:#EDF6EF;
   --papel:#F4F7F1; --branco:#FFFFFF;
-  --tinta:#152019; --tinta-2:#5F6E63; --linha:#E0E8DE; --linha-2:#CFDCCF;
+  --tinta:#152019; --tinta-2:#54655A; --linha:#E0E8DE; --linha-2:#CFDCCF;
   --erro:#B3402E; --erro-fundo:#FBEDEA;
   --ambar-fundo:#FBF3DF; --ambar-borda:#E8D6A2; --ambar-tinta:#78591A;
   --raio:16px; --raio-p:11px;
@@ -95,7 +95,7 @@ img{display:block}
 
 .conteudo{flex:1;max-width:960px;width:100%;margin:0 auto;padding:18px 22px 132px;
   animation:entra .28s cubic-bezier(.2,.8,.25,1) both}
-@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes entra{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 .tituloSecao{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.01em;color:var(--mata);margin:10px 0 3px}
 .subSecao{color:var(--tinta-2);font-size:14px;margin-bottom:16px}
 
@@ -360,6 +360,80 @@ table.docItens td b{font-variant-numeric:tabular-nums}
   .topo::before,.topo::after{display:none}
 }
 
+
+/* ============================================================
+   USABILIDADE v4
+   ============================================================ */
+/* skeleton */
+.prodLinha.skel{pointer-events:none}
+.skelFoto{width:58px;height:58px;border-radius:12px;flex-shrink:0}
+.skelFoto,.skelBarra{background:linear-gradient(90deg,#EDF2EC 25%,#E2EAE1 45%,#EDF2EC 65%);background-size:220% 100%;animation:brilha 1.15s ease-in-out infinite}
+.skelBarra{height:13px;border-radius:6px}
+@keyframes brilha{from{background-position:130% 0}to{background-position:-70% 0}}
+
+/* preço em coluna própria, alinhado à direita (leitura de cardápio) */
+.prodLinha .precoCol{flex-shrink:0;min-width:92px;text-align:right;font-family:var(--display);
+  font-weight:700;font-size:15.5px;color:var(--mata);font-variant-numeric:tabular-nums;padding-right:2px}
+@media(max-width:480px){.prodLinha .precoCol{min-width:74px;font-size:14.5px}}
+
+/* chips da receita */
+.chipsReceita{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1.5px solid #BFDCCB;border-radius:999px;
+  padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--mata);font-variant-numeric:tabular-nums}
+.chip b{font-weight:800}
+.chip.zerado{border-color:#E0A79A;color:var(--erro);background:var(--erro-fundo)}
+.chip.validade{border-style:dashed;color:var(--tinta-2)}
+.detReceita{margin-top:9px;font-size:13px;line-height:1.55;border-top:1.5px dashed #BFDCCB;padding-top:9px}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:80;
+  background:var(--mata);color:#fff;font-size:14px;font-weight:600;padding:11px 18px;border-radius:999px;
+  box-shadow:0 12px 30px rgba(10,42,30,.4);max-width:86vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  animation:toastEntra .22s cubic-bezier(.2,.8,.25,1) both}
+#toast.some{opacity:0;transform:translateX(-50%) translateY(8px);transition:.28s}
+@keyframes toastEntra{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%)}}
+
+/* tela de sucesso */
+#telaSucesso{position:fixed;inset:0;z-index:75;background:#0F3527E8;backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.sucessoCartao{background:#fff;border-radius:20px;padding:36px 40px;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,.45);
+  animation:surge .4s cubic-bezier(.2,.8,.25,1) both}
+.sucessoCartao b{display:block;font-family:var(--display);font-size:19px;color:var(--mata);margin-top:14px}
+.sucessoCartao span{display:block;font-size:13.5px;color:var(--tinta-2);margin-top:4px;font-variant-numeric:tabular-nums}
+.checkAnim{width:64px;height:64px;margin:0 auto;display:block}
+.checkAnim circle{stroke:var(--brotinho);stroke-width:3}
+.checkAnim path{stroke:var(--folha);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:40;stroke-dashoffset:40;animation:risca .5s .15s cubic-bezier(.65,0,.45,1) forwards}
+@keyframes risca{to{stroke-dashoffset:0}}
+
+/* cupom recolhe ao rolar */
+.cupom{transition:transform .28s cubic-bezier(.2,.8,.25,1)}
+.cupom.cupomOculto{transform:translateY(115%)}
+
+/* card Entrega unificado */
+.rotuloBloco{font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--folha);margin-bottom:12px}
+.entregaGrade{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:560px){.entregaGrade{grid-template-columns:1fr}}
+
+/* ficha vira gaveta no celular */
+@media(max-width:640px){
+  .fichaCliente:not(.escondido){position:fixed;left:0;right:0;bottom:0;z-index:65;background:#fff;
+    border-radius:22px 22px 0 0;border-top:none;box-shadow:0 -20px 50px rgba(10,42,30,.35);
+    padding:22px 20px calc(20px + env(safe-area-inset-bottom));max-height:82dvh;overflow:auto;
+    animation:sobeGaveta .28s cubic-bezier(.2,.8,.25,1) both}
+  .fichaCliente:not(.escondido)::before{content:'';display:block;width:44px;height:5px;border-radius:99px;
+    background:var(--linha-2);margin:0 auto 16px}
+  .fecharFicha{display:inline-flex!important;width:100%;margin-top:16px}
+  @keyframes sobeGaveta{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+}
+
+/* alvos de toque maiores no celular */
+@media(pointer:coarse){
+  .btnAdd,.rotuloBloq{height:44px}
+  .stepper button{width:46px;height:44px}
+  .cabEditar{padding:9px 17px}
+}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -414,6 +488,7 @@ table.docItens td b{font-variant-numeric:tabular-nums}
           <div class="campo"><label>Telefone</label><input id="fTelefone" inputmode="tel"></div>
           <div class="campo"><label>CEP de entrega</label><input id="fCep" inputmode="numeric" placeholder="00000-000"></div>
         </div>
+        <button type="button" class="btn btn-claro fecharFicha escondido" id="btnFecharFicha">Concluir edição</button>
       </div>
     </div>
     <div id="orcAnteriores" class="orcAnteriores escondido"></div>
@@ -433,10 +508,14 @@ table.docItens td b{font-variant-numeric:tabular-nums}
     <div id="listaRevisao"></div>
 
     <div class="blocoFrete">
-      <div class="campo">
-        <label>CEP de entrega</label>
-        <div class="cepVisor"><span id="cepVisor">—</span><input id="inCep" type="hidden"></div>
-        <div class="cepStatus" id="cepStatus"></div>
+      <div class="rotuloBloco">Entrega</div>
+      <div class="entregaGrade">
+        <div class="campo">
+          <label>CEP de entrega</label>
+          <div class="cepVisor"><span id="cepVisor">—</span><input id="inCep" type="hidden"></div>
+          <div class="cepStatus" id="cepStatus"></div>
+        </div>
+        <div class="campo"><label>Frete (R$)</label><input id="inFrete" inputmode="decimal" placeholder="0,00"></div>
       </div>
       <div class="opcoesFrete" id="opcoesFrete">
         <label class="opFrete" data-tipo="capital">
@@ -452,9 +531,6 @@ table.docItens td b{font-variant-numeric:tabular-nums}
           <span class="opTexto"><b>Exclusivo</b><small id="rotExclusivo"></small></span>
         </label>
       </div>
-    </div>
-    <div class="ajustes">
-      <div class="campo"><label>Frete (R$)</label><input id="inFrete" inputmode="decimal" placeholder="0,00"></div>
     </div>
 
     <div class="caixaTotais">
@@ -480,12 +556,23 @@ table.docItens td b{font-variant-numeric:tabular-nums}
   </div>
 </div>
 
+<div id="toast" class="escondido"></div>
+
+<div id="telaSucesso" class="escondido">
+  <div class="sucessoCartao">
+    <svg class="checkAnim" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="none"/><path fill="none" d="M14 27l8 8 16-17"/></svg>
+    <b id="sucessoTitulo">Orçamento criado no HubSpot</b>
+    <span id="sucessoSub"></span>
+  </div>
+</div>
+
 <!-- ==================== DOCUMENTO ==================== -->
 <div id="telaDoc" class="escondido">
   <div class="folha" id="folhaDoc"><!-- preenchido pelo JS --></div>
   <div class="docBarra">
     <button class="btn btn-claro" id="btnNovoOrc">Novo orçamento</button>
     <button class="btn btn-fantasma escondido" id="btnLinkHs">Abrir link do orçamento</button>
+    <button class="btn btn-claro escondido" id="btnCompartilhar">Compartilhar</button>
     <button class="btn btn-verde" id="btnImprimir">Salvar PDF / Imprimir</button>
   </div>
 </div>
@@ -521,17 +608,21 @@ async function api(caminho, opts) {
   const r = await fetch(caminho, { credentials: 'same-origin', ...opts });
   const j = await r.json().catch(() => ({ ok:false, erro:'Resposta inválida do servidor' }));
   if (r.status === 401 && !caminho.startsWith('/api/abrir')) {
-    mostrarAviso('Sessão expirada — feche esta aba e abra de novo pelo link do negócio no HubSpot.');
+    mostrarAviso('Sessão expirada — abra de novo pelo negócio no HubSpot.', true);
   }
   return j;
 }
 
 /* ---------- entrada pelo link do HubSpot ---------- */
-function mostrarAviso(msg) {
+function mostrarAviso(msg, comRecarregar) {
   $('#telaAviso').classList.remove('escondido');
   $('#app').classList.add('escondido');
-  $('#avisoTexto').textContent = msg;
+  $('#avisoTexto').innerHTML = escapeHtml(msg)
+    + (comRecarregar ? '<br><button class="btn btn-verde" style="margin-top:16px" onclick="location.reload()">Tentar de novo</button>' : '');
 }
+window.addEventListener('beforeunload', e => {
+  if (estado.carrinho.size && $('#telaDoc').classList.contains('escondido')) { e.preventDefault(); e.returnValue = ''; }
+});
 function mostrarApp() { $('#telaAviso').classList.add('escondido'); $('#app').classList.remove('escondido'); }
 
 /* ---------- app ---------- */
@@ -546,6 +637,7 @@ function iniciarApp(d) {
   $('#fCep').value = mascaraCep(c.cep || '');
   atualizarCabecalhoCliente();
   desenharOrcAnteriores(d.orcamentosAnteriores || []);
+  jaTemOrcamentos = (d.orcamentosAnteriores || []).length;
   mostrarApp();
   carregarProdutos();
   carregarReceita(false);
@@ -584,12 +676,24 @@ function atualizarCabecalhoCliente() {
     estado.negocioSel && estado.negocioSel.nome,
   ].filter(Boolean).join(' · ');
 }
-$('#btnEditarCliente').addEventListener('click', () => {
+function alternarFicha() {
   const f = $('#fichaCliente');
   const abrindo = f.classList.contains('escondido');
   f.classList.toggle('escondido');
   $('#btnEditarCliente').textContent = abrindo ? 'fechar' : 'editar';
-});
+}
+$('#btnEditarCliente').addEventListener('click', alternarFicha);
+$('#btnFecharFicha').addEventListener('click', alternarFicha);
+
+// cupom se recolhe ao rolar para baixo e volta ao subir
+let ultimoY = 0;
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  const cupom = $('#cupom');
+  if (y > ultimoY + 8 && y > 140) cupom.classList.add('cupomOculto');
+  else if (y < ultimoY - 8) cupom.classList.remove('cupomOculto');
+  ultimoY = y;
+}, { passive: true });
 ['fNome', 'fCpf', 'fEmail', 'fTelefone', 'fCep'].forEach(id =>
   $('#' + id).addEventListener('input', atualizarCabecalhoCliente));
 
@@ -686,6 +790,30 @@ function podeAdicionarMais(p) {
   return gramasNoGrupo(inf.grupo) + inf.gPorUn <= grupo.gramas;
 }
 
+function chipsDaReceita() {
+  const r = estado.receita;
+  if (!r || r.status !== 'ok' || !r.grupos) return '';
+  const chips = Object.entries(r.grupos).map(([chave, g]) => {
+    if (g.gramas === null || !(g.gramas > 0)) return `<span class="chip">${escapeHtml(g.descricao || chave)} · sem limite</span>`;
+    const restam = Math.max(0, g.gramas - gramasNoGrupo(chave));
+    return `<span class="chip ${restam <= 0 ? 'zerado' : ''}">${escapeHtml(g.descricao || chave)} · restam <b>${restam}g</b>${g.periodo ? '/' + escapeHtml(g.periodo) : ''}</span>`;
+  });
+  if (r.validaAte) chips.push(`<span class="chip validade">válida até ${r.validaAte.split('-').reverse().join('/')}</span>`);
+  return chips.join('');
+}
+function atualizarChipsReceita() {
+  const el = document.getElementById('chipsReceita');
+  if (el) el.innerHTML = chipsDaReceita();
+}
+function toggleDetReceita() {
+  const d = document.getElementById('detReceita');
+  const b = document.getElementById('btnDetReceita');
+  if (!d) return;
+  const abrindo = d.classList.contains('escondido');
+  d.classList.toggle('escondido');
+  if (b) b.textContent = abrindo ? 'menos detalhes' : 'detalhes';
+}
+
 function desenharBannerReceita() {
   const b = $('#receitaBanner');
   const r = estado.receita;
@@ -700,9 +828,11 @@ function desenharBannerReceita() {
     b.innerHTML = '<b>Receita vencida.</b> Nenhum produto liberado — peça uma receita nova ao cliente.' + reler;
   } else if (r.status === 'ok') {
     b.className = 'receitaBanner ok';
-    b.innerHTML = '<b>Receita conferida:</b> ' + escapeHtml(r.resumo)
-      + (r.validaAte ? ' · válida até ' + r.validaAte.split('-').reverse().join('/') : '')
-      + (r.observacoes ? '<br><small>' + escapeHtml(r.observacoes) + '</small>' : '') + reler;
+    b.innerHTML = '<b>Receita conferida</b>'
+      + ' <button class="reler" id="btnDetReceita" onclick="toggleDetReceita()">detalhes</button>' + reler
+      + '<div class="chipsReceita" id="chipsReceita">' + chipsDaReceita() + '</div>'
+      + '<div class="detReceita escondido" id="detReceita">' + escapeHtml(r.resumo)
+      + (r.observacoes ? '<br><small>' + escapeHtml(r.observacoes) + '</small>' : '') + '</div>';
   } else if (r.status === 'sem') {
     b.className = 'receitaBanner bloq';
     b.innerHTML = '<b>Sem receita anexada.</b> Anexe a receita no contato ou no negócio do HubSpot para liberar os produtos.' + reler;
@@ -713,44 +843,62 @@ function desenharBannerReceita() {
 }
 
 /* ---------- produtos ---------- */
+function skeletonProdutos() {
+  return Array.from({ length: 6 }, () => `
+    <div class="prodLinha skel"><div class="skelFoto"></div>
+      <div class="meio"><div class="skelBarra" style="width:62%"></div><div class="skelBarra" style="width:34%;margin-top:8px"></div></div>
+      <div class="acao"><div class="skelBarra" style="width:100%;height:40px;border-radius:11px"></div></div>
+    </div>`).join('');
+}
+
 async function carregarProdutos() {
-  const j = await api('/api/produtos');
   const grade = $('#gradeProdutos');
-  if (!j.ok) { grade.innerHTML = '<div class="vazio">' + escapeHtml(j.erro || 'Não foi possível carregar os produtos') + '</div>'; return; }
+  grade.innerHTML = skeletonProdutos();
+  const j = await api('/api/produtos');
+  if (!j.ok) {
+    grade.innerHTML = '<div class="vazio">' + escapeHtml(j.erro || 'Não foi possível carregar os produtos')
+      + '<br><button class="btn btn-fantasma" data-refazer="produtos" style="margin-top:12px">Tentar de novo</button></div>';
+    return;
+  }
   estado.produtos = j.produtos;
   desenharProdutos('');
 }
 $('#buscaProduto').addEventListener('input', e => { estado.paginaProdutos = 1; desenharProdutos(e.target.value.trim().toLowerCase()); });
 
+function htmlMeio(p) {
+  const liberado = produtoLiberado(p);
+  const cabeMais = podeAdicionarMais(p);
+  const lim = liberado ? textoLimiteReceita(p) : '';
+  return `<b title="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</b>`
+    + (lim ? `<span class="limReceita ${!cabeMais ? 'noLimite' : ''}">${escapeHtml(lim)}</span>` : '');
+}
+function htmlAcao(p) {
+  const qtd = estado.carrinho.get(p.id) || 0;
+  const liberado = produtoLiberado(p);
+  const lendo = estado.receita === null;
+  const cabeMais = podeAdicionarMais(p);
+  if (!liberado) return `<div class="rotuloBloq">${lendo ? 'Conferindo receita…' : 'Não consta na receita'}</div>`;
+  if (qtd) return `<div class="stepper"><button data-acao="menos" aria-label="Tirar 1">−</button><span class="qtd">${qtd}</span><button data-acao="mais" aria-label="Adicionar 1" ${cabeMais ? '' : 'disabled title="Limite da receita atingido"'}>+</button></div>`;
+  return cabeMais ? `<button class="btnAdd" data-acao="add">Adicionar</button>` : `<div class="rotuloBloq">Limite da receita</div>`;
+}
+
+let filtroAtual = '';
 function desenharProdutos(filtro) {
+  filtroAtual = filtro || '';
   const grade = $('#gradeProdutos');
-  const lista = estado.produtos.filter(p => !filtro || p.nome.toLowerCase().includes(filtro) || (p.sku||'').toLowerCase().includes(filtro));
+  const lista = estado.produtos.filter(p => !filtroAtual || p.nome.toLowerCase().includes(filtroAtual) || (p.sku||'').toLowerCase().includes(filtroAtual));
   if (!lista.length) { grade.innerHTML = '<div class="vazio">Nenhum produto com esse nome.</div>'; return; }
   const totalPaginas = Math.ceil(lista.length / PRODUTOS_POR_PAGINA);
   estado.paginaProdutos = Math.min(Math.max(1, estado.paginaProdutos), totalPaginas);
   const pagina = lista.slice((estado.paginaProdutos - 1) * PRODUTOS_POR_PAGINA, estado.paginaProdutos * PRODUTOS_POR_PAGINA);
   grade.innerHTML = pagina.map(p => {
     const qtd = estado.carrinho.get(p.id) || 0;
-    const liberado = produtoLiberado(p);
-    const lendo = estado.receita === null;
-    const cabeMais = podeAdicionarMais(p);
     return `
-    <div class="prodLinha ${qtd ? 'noCarrinho' : ''} ${liberado ? '' : 'bloqueado'}" data-id="${p.id}">
+    <div class="prodLinha ${qtd ? 'noCarrinho' : ''} ${produtoLiberado(p) ? '' : 'bloqueado'}" data-id="${p.id}">
       ${p.foto ? `<img src="${escapeHtml(p.foto)}" alt="" loading="lazy" onerror="this.outerHTML=zSemMini()">` : `<div class="miniSem">${semFotoSvg()}</div>`}
-      <div class="meio">
-        <b>${escapeHtml(p.nome)}</b>
-        <span class="preco">${brl(p.preco)}</span>
-        ${liberado && textoLimiteReceita(p) ? `<span class="limReceita ${!cabeMais ? 'noLimite' : ''}">${escapeHtml(textoLimiteReceita(p))}</span>` : ''}
-      </div>
-      <div class="acao">
-        ${!liberado
-          ? `<div class="rotuloBloq">${lendo ? 'Conferindo receita…' : 'Não consta na receita'}</div>`
-          : qtd
-            ? `<div class="stepper"><button data-acao="menos">−</button><span class="qtd">${qtd}</span><button data-acao="mais" ${cabeMais ? '' : 'disabled title="Limite da receita atingido"'}>+</button></div>`
-            : cabeMais
-              ? `<button class="btnAdd" data-acao="add">Adicionar</button>`
-              : `<div class="rotuloBloq">Limite da receita</div>`}
-      </div>
+      <div class="meio">${htmlMeio(p)}</div>
+      <div class="precoCol">${brl(p.preco)}</div>
+      <div class="acao">${htmlAcao(p)}</div>
     </div>`;
   }).join('')
   + (totalPaginas > 1 ? `
@@ -759,27 +907,58 @@ function desenharProdutos(filtro) {
       <span>Página <b>${estado.paginaProdutos}</b> de ${totalPaginas} · ${lista.length} produtos</span>
       <button id="pagProxima" ${estado.paginaProdutos === totalPaginas ? 'disabled' : ''}>Próxima ›</button>
     </div>` : '');
-  const irPagina = delta => {
-    estado.paginaProdutos += delta;
-    desenharProdutos(filtro);
-    $('#buscaProduto').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  const bAnt = $('#pagAnterior'), bProx = $('#pagProxima');
-  if (bAnt) bAnt.addEventListener('click', () => irPagina(-1));
-  if (bProx) bProx.addEventListener('click', () => irPagina(1));
-  grade.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', ev => {
-    const id = ev.target.closest('.prodLinha').dataset.id;
-    const p = estado.produtos.find(x => x.id === id);
-    const atual = estado.carrinho.get(id) || 0;
-    const acao = ev.target.dataset.acao;
-    if ((acao === 'add' || acao === 'mais') && p && !podeAdicionarMais(p)) return; // segurança extra
-    if (acao === 'add' || acao === 'mais') estado.carrinho.set(id, atual + 1);
-    if (acao === 'menos') { if (atual <= 1) estado.carrinho.delete(id); else estado.carrinho.set(id, atual - 1); }
-    desenharProdutos(filtro);
-    atualizarCupom();
-  }));
 }
-function semFotoSvg(){ return '<svg class="semFoto" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L7 20"/></svg>'; }
+
+// atualização por linha: mexer no carrinho não redesenha a lista (nada de pisca)
+function atualizarLinhasVisiveis() {
+  document.querySelectorAll('#gradeProdutos .prodLinha[data-id]').forEach(linha => {
+    const p = estado.produtos.find(x => x.id === linha.dataset.id);
+    if (!p) return;
+    linha.classList.toggle('noCarrinho', (estado.carrinho.get(p.id) || 0) > 0);
+    linha.classList.toggle('bloqueado', !produtoLiberado(p));
+    linha.querySelector('.meio').innerHTML = htmlMeio(p);
+    linha.querySelector('.acao').innerHTML = htmlAcao(p);
+  });
+}
+
+// um único ouvinte para a lista inteira (delegação)
+$('#gradeProdutos').addEventListener('click', ev => {
+  const refazer = ev.target.closest('[data-refazer="produtos"]');
+  if (refazer) { carregarProdutos(); return; }
+  if (ev.target.closest('#pagAnterior')) { estado.paginaProdutos--; desenharProdutos(filtroAtual); $('#buscaProduto').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (ev.target.closest('#pagProxima')) { estado.paginaProdutos++; desenharProdutos(filtroAtual); $('#buscaProduto').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const botao = ev.target.closest('[data-acao]');
+  if (!botao || botao.disabled) return;
+  const linha = ev.target.closest('.prodLinha');
+  const p = estado.produtos.find(x => x.id === linha.dataset.id);
+  if (!p) return;
+  const atual = estado.carrinho.get(p.id) || 0;
+  const acao = botao.dataset.acao;
+  if ((acao === 'add' || acao === 'mais') && !podeAdicionarMais(p)) return;
+  if (acao === 'add' || acao === 'mais') {
+    estado.carrinho.set(p.id, atual + 1);
+    if (acao === 'add') toast('Adicionado: ' + p.nome);
+  }
+  if (acao === 'menos') {
+    if (atual <= 1) { estado.carrinho.delete(p.id); toast('Removido: ' + p.nome); }
+    else estado.carrinho.set(p.id, atual - 1);
+  }
+  atualizarLinhasVisiveis();
+  atualizarChipsReceita();
+  atualizarCupom();
+});
+function semFotoSvg(){ return '<svg class="semFoto" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L7 20"/></svg>'; }
+
+/* ---------- toast ---------- */
+let timerToast = null;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.remove('escondido');
+  el.classList.remove('some'); void el.offsetWidth;
+  clearTimeout(timerToast);
+  timerToast = setTimeout(() => { el.classList.add('some'); setTimeout(() => el.classList.add('escondido'), 300); }, 1900);
+}
 
 /* ---------- cupom ---------- */
 function descontoUnitario(p) {
@@ -951,10 +1130,20 @@ $('#inFrete').addEventListener('input', atualizarTotaisRevisao);
 $('#btnVoltarProdutos').addEventListener('click', () => irParaPasso(2));
 
 /* ---------- gerar ---------- */
+let jaTemOrcamentos = 0;
 $('#btnGerar').addEventListener('click', async () => {
   const btn = $('#btnGerar');
+  if (jaTemOrcamentos > 0) {
+    const ok = confirm('Este negócio já tem ' + jaTemOrcamentos + (jaTemOrcamentos === 1 ? ' orçamento' : ' orçamentos')
+      + '. Gerar de novo substitui os itens de linha do negócio pelo pedido atual. Continuar?');
+    if (!ok) return;
+  }
   $('#erroGerar').classList.add('escondido');
-  btn.disabled = true; btn.textContent = 'Gerando e lançando no HubSpot…';
+  btn.disabled = true;
+  btn.textContent = 'Lançando itens no HubSpot…';
+  const fases = ['Criando o orçamento…', 'Quase lá…'];
+  let f = 0;
+  const timerFases = setInterval(() => { if (f < fases.length) btn.textContent = fases[f++]; }, 2600);
 
   const itens = [];
   for (const [id, q] of estado.carrinho) {
@@ -982,10 +1171,12 @@ $('#btnGerar').addEventListener('click', async () => {
     }),
   });
 
+  clearInterval(timerFases);
   btn.disabled = false; btn.textContent = 'Gerar orçamento';
   if (!j.ok) { const e = $('#erroGerar'); e.textContent = j.erro || 'Não foi possível gerar'; e.classList.remove('escondido'); return; }
+  jaTemOrcamentos++;
 
-  abrirDocumento({
+  mostrarSucesso(j.numero, () => abrirDocumento({
     numero: j.numero, data: j.data,
     cliente: { nome: $('#fNome').value, cpf: $('#fCpf').value, email: $('#fEmail').value, telefone: $('#fTelefone').value, cep: $('#inCep').value || $('#fCep').value },
     itens,
@@ -994,8 +1185,16 @@ $('#btnGerar').addEventListener('click', async () => {
     vendedor: estado.vendedor.nome,
     linkHubspot: j.linkHubspot || '',
     avisoOrcamento: j.avisoOrcamento || '',
-  });
+  }));
 });
+
+function mostrarSucesso(numero, depois) {
+  const tela = $('#telaSucesso');
+  $('#sucessoSub').textContent = 'Nº ' + numero + ' · itens de linha atualizados';
+  tela.classList.remove('escondido');
+  const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(() => { tela.classList.add('escondido'); depois(); }, reduz ? 250 : 1400);
+}
 
 /* ---------- documento ---------- */
 function abrirDocumento(d) {
@@ -1062,6 +1261,17 @@ function abrirDocumento(d) {
   } else {
     btnLink.classList.add('escondido');
   }
+  const btnComp = $('#btnCompartilhar');
+  if (navigator.share) {
+    btnComp.classList.remove('escondido');
+    btnComp.onclick = () => navigator.share({
+      title: 'Orçamento Zeleno',
+      text: 'Orçamento Zeleno nº ' + d.numero + ' — total ' + brl(d.total)
+        + (d.linkHubspot ? '\n' + d.linkHubspot : ''),
+    }).catch(() => {});
+  } else {
+    btnComp.classList.add('escondido');
+  }
   document.querySelectorAll('#telaDoc .msgErro').forEach(el => el.remove());
   if (d.avisoOrcamento) {
     $('#folhaDoc').insertAdjacentHTML('beforebegin',
@@ -1092,7 +1302,7 @@ $('#btnNovoOrc').addEventListener('click', () => {
   }
   mostrarAviso('Abrindo o negócio…');
   const j = await api('/api/abrir?negocio=' + negocio + '&chave=' + encodeURIComponent(chave));
-  if (!j.ok) { mostrarAviso(j.erro || 'Não foi possível abrir o negócio.'); return; }
+  if (!j.ok) { mostrarAviso(j.erro || 'Não foi possível abrir o negócio.', true); return; }
   iniciarApp(j);
 })();
 </script>
