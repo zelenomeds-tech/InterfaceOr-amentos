@@ -108,7 +108,8 @@ async function propsProduto() {
   // Status: entre as propriedades com "status" no nome, vale a que TEM a
   // opção "Ativo" dentro dela — assim não confunde com outra propriedade
   // parecida que exista vazia.
-  const temOpcaoAtivo = p => ((p.options || []).some(o => normTexto(o.label).includes('ativo') && !normTexto(o.label).includes('inativo')));
+  const ehRotuloAtivo = rot => (rot.includes('ativo') && !rot.includes('inativo')) || (rot.includes('active') && !rot.includes('inactive'));
+  const temOpcaoAtivo = p => ((p.options || []).some(o => ehRotuloAtivo(normTexto(o.label))));
   if (!propStatus) {
     const candidatas = todas.filter(p => normTexto(p.label).includes('status'));
     const comAtivo = candidatas.find(temOpcaoAtivo);
@@ -121,7 +122,7 @@ async function propsProduto() {
   }
   if (propStatus && !valorAtivo) {
     const p = todas.find(x => x.name === propStatus);
-    const op = ((p && p.options) || []).find(o => normTexto(o.label).includes('ativo') && !normTexto(o.label).includes('inativo'));
+    const op = ((p && p.options) || []).find(o => ehRotuloAtivo(normTexto(o.label)));
     valorAtivo = op ? String(op.value) : 'ativo';
   }
   // para o diagnóstico: todas as candidatas com suas opções
@@ -161,7 +162,7 @@ async function catalogoProdutos() {
         foto: (p.hs_images || '').split(';')[0].trim(),
         statusBruto: propStatus ? String(p[propStatus] || '') : '',
         // ativo se bater com o valor interno da opção Ativo OU com o texto "ativo"
-        ativo: propStatus ? (String(p[propStatus] || '') === valorAtivo || statusVal === 'ativo') : true,
+        ativo: propStatus ? (String(p[propStatus] || '') === valorAtivo || statusVal === 'ativo' || statusVal === 'active') : true,
         grupo,
         categoria: grupo.includes('FLOR') ? 'flor' : grupo.includes('EXTRATO') ? 'extrato' : grupo.includes('OLEO') ? 'oleo' : null,
         dominancia: grupo.includes('_CBD') ? 'CBD' : grupo.includes('_THC') ? 'THC' : null,
