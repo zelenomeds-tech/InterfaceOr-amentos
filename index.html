@@ -347,6 +347,7 @@ table.docItens .prodCel img,.prodCel .miniSem{width:46px;height:46px;border-radi
         </div>
       </div>
     </div>
+    <div id="orcAnteriores" class="orcAnteriores escondido"></div>
     <h2 class="tituloSecao">Produtos</h2>
     <div id="receitaBanner" class="receitaBanner escondido"></div>
     <div class="buscaLinha">
@@ -482,6 +483,7 @@ function iniciarApp(d) {
 
 function desenharOrcAnteriores(lista) {
   const box = $('#orcAnteriores');
+  if (!box) return; // nunca derruba a abertura por causa da faixa
   if (!lista.length) { box.classList.add('escondido'); return; }
   const dataBr = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
   const ultimo = dataBr(lista[0].criadoEm);
