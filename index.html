@@ -165,6 +165,7 @@ img{display:block}
 .itemRev .valor{font-weight:700;font-size:14px;white-space:nowrap}
 .itemRev .tirar{background:none;border:none;color:var(--tinta-2);font-size:18px;padding:4px}
 .blocoFrete{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:16px;margin:16px 0 0}
+.cepVisor span{font-size:16px;font-weight:600}
 .cepStatus{font-size:13px;color:var(--tinta-2);margin-top:6px;min-height:18px}
 .cepStatus.ok{color:var(--folha);font-weight:600}
 .cepStatus.ruim{color:var(--erro);font-weight:600}
@@ -317,7 +318,7 @@ table.docItens .prodCel img,.prodCel .miniSem{width:44px;height:44px;border-radi
     <div class="blocoFrete">
       <div class="campo">
         <label>CEP de entrega</label>
-        <input id="inCep" inputmode="numeric" placeholder="00000-000">
+        <div class="cepVisor"><span id="cepVisor">—</span><input id="inCep" type="hidden"></div>
         <div class="cepStatus" id="cepStatus"></div>
       </div>
       <div class="opcoesFrete" id="opcoesFrete">
@@ -716,6 +717,7 @@ function montarRevisao() {
   const cepFicha = $('#fCep').value;
   if (cepFicha && $('#inCep').value !== cepFicha) { $('#inCep').value = cepFicha; consultarCep(); }
   else if (cepFicha && !document.querySelector('input[name="tipoFrete"]:checked')) { consultarCep(); }
+  $('#cepVisor').textContent = $('#inCep').value || 'sem CEP no cadastro — toque em "editar" no topo dos produtos para preencher';
   atualizarTotaisRevisao();
 }
 window.zSemMini = () => `<div class="miniSem">${semFotoSvg()}</div>`;
@@ -762,12 +764,7 @@ function marcarFrete(tipo) {
   $('#inFrete').value = String(FRETES[tipo]).replace('.', ',');
   atualizarTotaisRevisao();
 }
-$('#inCep').addEventListener('input', e => {
-  e.target.value = mascaraCep(e.target.value);
-  $('#fCep').value = e.target.value; // mantém a ficha do cliente em dia
-  clearTimeout(timerCep);
-  timerCep = setTimeout(consultarCep, 400);
-});
+
 document.querySelectorAll('input[name="tipoFrete"]').forEach(r =>
   r.addEventListener('change', () => marcarFrete(r.value)));
 
