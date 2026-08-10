@@ -1,4 +1,4 @@
-const { sessaoDoRequest, catalogoProdutos, casarReceita, json } = require('./_lib.js');
+const { sessaoDoRequest, catalogoProdutos, casarReceita, produtosVendaveis, json } = require('./_lib.js');
 
 // GET /api/receita?contato=ID&negocio=ID&forcar=1
 // Chama o fluxo do n8n que baixa a(s) receita(s) anexada(s), lê com IA e
@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
     if (corpo.ok && corpo.status === 'ok' && Array.isArray(corpo.itensReceita)) {
       const { produtos } = await catalogoProdutos();
       // mesma válvula do /api/produtos: se o filtro de Status zerar, usa todos
-      const ativos = produtos.filter(p => p.ativo);
+      const ativos = produtosVendaveis(produtos);
       const base = ativos.length ? ativos : produtos;
       const casado = casarReceita(corpo.itensReceita, base);
       return json(res, 200, { ...corpo, liberados: casado.liberados, grupos: casado.grupos });
