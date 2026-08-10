@@ -58,6 +58,33 @@ module.exports = async (req, res) => {
       } catch (e) { /* sem nome, segue */ }
     }
 
+    // orçamentos já existentes neste negócio (para o vendedor não duplicar sem saber)
+    let orcamentosAnteriores = [];
+    try {
+      const assocOrc = await hs('/crm/v3/objects/deals/' + negocioId + '/associations/quotes');
+      const ids = (assocOrc.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean);
+      if (ids.length) {
+        const lidos = await hs('/crm/v3/objects/quotes/batch/read', {
+          method: 'POST',
+          body: JSON.stringify({
+            inputs: ids.map(id => ({ id })),
+            properties: ['hs_title', 'hs_createdate', 'hs_expiration_date', 'hs_quote_link', 'hs_quote_amount'],
+          }),
+        });
+        orcamentosAnteriores = (lidos.results || []).map(q => {
+          const p = q.properties || {};
+          return {
+            id: String(q.id),
+            titulo: p.hs_title || 'Orçamento',
+            criadoEm: p.hs_createdate || '',
+            validade: p.hs_expiration_date || '',
+            link: p.hs_quote_link || '',
+            valor: parseFloat(p.hs_quote_amount) || 0,
+          };
+        }).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+      }
+    } catch (e) { /* sem escopo de quotes ou sem orçamentos: segue sem a lista */ }
+
     // sessão presa a ESTE negócio: o gerar só aceita ele
     setCookieSessao(res, { papel: 'vendedor', negocioId, contatoId: cliente.id, nome: vendedor });
 
@@ -66,6 +93,7 @@ module.exports = async (req, res) => {
       negocio: { id: negocioId, nome: neg.properties?.dealname || '(sem nome)', etapaId },
       cliente,
       vendedor,
+      orcamentosAnteriores,
     });
   } catch (e) {
     if (e.status === 404) return json(res, 404, { ok: false, erro: 'Negócio não encontrado no HubSpot — confira o link.' });
