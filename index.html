@@ -232,6 +232,13 @@ img{display:block}
 .rodapeAcoes{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
 .rodapeAcoes .btn{flex:1;min-width:180px}
 
+.paginacao{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;
+  background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio-p);padding:9px 12px;box-shadow:var(--sombra)}
+.paginacao span{font-size:13px;color:var(--tinta-2);font-variant-numeric:tabular-nums}
+.paginacao span b{color:var(--mata)}
+.paginacao button{border:1.5px solid var(--linha);background:var(--branco);border-radius:9px;padding:8px 14px;font-size:13.5px;font-weight:700;color:var(--folha);transition:.14s}
+.paginacao button:hover:not(:disabled){border-color:var(--folha);background:var(--brotinho-2)}
+.paginacao button:disabled{opacity:.4;cursor:default;color:var(--tinta-2)}
 .carregando{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--tinta-2);padding:44px 0;font-size:14px}
 .aro{width:18px;height:18px;border:2.5px solid var(--linha);border-top-color:var(--folha);border-radius:50%;animation:gira .8s linear infinite}
 @keyframes gira{to{transform:rotate(360deg)}}
@@ -434,6 +441,7 @@ const escapeHtml = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','
    capital = CEP da cidade de São Paulo */
 const FRETES = { sedex: 60, capital: 40, exclusivo: 0 }; // ⚠️ exclusivo: valor a definir
 const LIMITE_DESCONTO_PCT = 20; // ⚠️ trava: descontos até 20% do subtotal (igual no servidor)
+const PRODUTOS_POR_PAGINA = 10;
 
 const estado = {
   vendedor: '',
@@ -443,6 +451,7 @@ const estado = {
   carrinho: new Map(),  // produtoId -> quantidade
   descontos: new Map(), // produtoId -> { tipo: '%' | 'R$', valor: number }
   receita: null,        // null=carregando · {status:'ok'|'sem'|'erro', liberados:Set, ...}
+  paginaProdutos: 1,
   passo: 1,
 };
 
@@ -649,13 +658,16 @@ async function carregarProdutos() {
   estado.produtos = j.produtos;
   desenharProdutos('');
 }
-$('#buscaProduto').addEventListener('input', e => desenharProdutos(e.target.value.trim().toLowerCase()));
+$('#buscaProduto').addEventListener('input', e => { estado.paginaProdutos = 1; desenharProdutos(e.target.value.trim().toLowerCase()); });
 
 function desenharProdutos(filtro) {
   const grade = $('#gradeProdutos');
   const lista = estado.produtos.filter(p => !filtro || p.nome.toLowerCase().includes(filtro) || (p.sku||'').toLowerCase().includes(filtro));
   if (!lista.length) { grade.innerHTML = '<div class="vazio">Nenhum produto com esse nome.</div>'; return; }
-  grade.innerHTML = lista.map(p => {
+  const totalPaginas = Math.ceil(lista.length / PRODUTOS_POR_PAGINA);
+  estado.paginaProdutos = Math.min(Math.max(1, estado.paginaProdutos), totalPaginas);
+  const pagina = lista.slice((estado.paginaProdutos - 1) * PRODUTOS_POR_PAGINA, estado.paginaProdutos * PRODUTOS_POR_PAGINA);
+  grade.innerHTML = pagina.map(p => {
     const qtd = estado.carrinho.get(p.id) || 0;
     const liberado = produtoLiberado(p);
     const lendo = estado.receita === null;
@@ -678,7 +690,21 @@ function desenharProdutos(filtro) {
               : `<div class="rotuloBloq">Limite da receita</div>`}
       </div>
     </div>`;
-  }).join('');
+  }).join('')
+  + (totalPaginas > 1 ? `
+    <div class="paginacao">
+      <button id="pagAnterior" ${estado.paginaProdutos === 1 ? 'disabled' : ''}>‹ Anterior</button>
+      <span>Página <b>${estado.paginaProdutos}</b> de ${totalPaginas} · ${lista.length} produtos</span>
+      <button id="pagProxima" ${estado.paginaProdutos === totalPaginas ? 'disabled' : ''}>Próxima ›</button>
+    </div>` : '');
+  const irPagina = delta => {
+    estado.paginaProdutos += delta;
+    desenharProdutos(filtro);
+    $('#buscaProduto').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const bAnt = $('#pagAnterior'), bProx = $('#pagProxima');
+  if (bAnt) bAnt.addEventListener('click', () => irPagina(-1));
+  if (bProx) bProx.addEventListener('click', () => irPagina(1));
   grade.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', ev => {
     const id = ev.target.closest('.prodLinha').dataset.id;
     const p = estado.produtos.find(x => x.id === id);
