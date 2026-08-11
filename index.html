@@ -705,7 +705,6 @@ function iniciarApp(d) {
   $('#fNome').value = c.nome; $('#fCpf').value = c.cpf; $('#fEmail').value = c.email; $('#fTelefone').value = c.telefone;
   $('#fCep').value = mascaraCep(c.cep || '');
   atualizarCabecalhoCliente();
-  desenharOrcAnteriores(d.orcamentosAnteriores || []);
   desenharDocumentos(d.documentos || []);
   jaTemOrcamentos = (d.orcamentosAnteriores || []).length;
   mostrarApp();
