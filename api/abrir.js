@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
         const jaTem = new Set([...grupos.values()].flatMap(s => [...s]));
         for (const [tipo, id] of [['contacts', contatoId], ['deals', negocioId]]) {
           const assocNotas = await hs('/crm/v3/objects/' + tipo + '/' + id + '/associations/notes');
-          const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 50);
+          const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 30);
           if (!idsNotas.length) continue;
           const notas = await hs('/crm/v3/objects/notes/batch/read', {
             method: 'POST',
