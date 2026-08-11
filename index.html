@@ -101,43 +101,44 @@ img{display:block}
 
 /* ---------- CABEÇALHO DO CLIENTE ---------- */
 .cabCliente{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);
-  padding:13px 15px;margin-bottom:14px;box-shadow:var(--sombra)}
-.cabLinha{display:flex;align-items:center;gap:13px}
-.cabCliente .inicial{width:44px;height:44px;border-radius:50%;flex-shrink:0;
-  background:radial-gradient(circle at 30% 25%, var(--folha-viva), var(--mata));color:#fff;
+  padding:15px 17px;margin-bottom:14px;box-shadow:var(--sombra)}
+.cabLinha{display:flex;align-items:center;gap:14px}
+.cabCliente .inicial{width:46px;height:46px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(145deg, var(--mata-3), var(--mata-2));color:#fff;
   display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:18px;
-  box-shadow:0 0 0 3px var(--brotinho)}
+  box-shadow:0 0 0 1.5px var(--linha), 0 0 0 4px var(--brotinho-2)}
 .cabInfo{flex:1;min-width:0}
-.cabInfo b{display:block;font-size:15.5px;font-weight:700}
-.cabInfo span{display:block;font-size:12.5px;color:var(--tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.cabEditar{background:none;border:1.5px solid var(--linha);border-radius:999px;padding:7px 15px;font-size:13px;font-weight:700;color:var(--tinta-2);transition:.15s}
+.cabInfo b{display:block;font-family:var(--display);font-size:16.5px;font-weight:800;letter-spacing:-.01em;color:var(--mata)}
+.cabInfo span{display:block;font-size:12.5px;color:var(--tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;letter-spacing:.01em}
+.cabEditar{background:none;border:1.5px solid var(--linha);border-radius:999px;padding:7px 16px;font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--tinta-2);transition:.15s}
 .cabEditar:hover{border-color:var(--folha);color:var(--folha);background:var(--brotinho-2)}
-.docsCliente{border-top:1.5px dashed var(--linha);margin-top:11px;padding-top:10px}
-.docsRotulo{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);margin-right:8px}
-.docsToggle{display:inline-flex;align-items:center;gap:7px;background:var(--brotinho-2);border:1.5px solid var(--linha);
-  border-radius:999px;padding:7px 15px;font-size:13px;font-weight:700;color:var(--mata);transition:.14s}
-.docsToggle:hover{border-color:var(--folha);background:var(--brotinho)}
-.docsToggle em{font-style:normal;background:var(--folha);color:#fff;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:800}
-.docsToggle .seta{color:var(--tinta-2);font-size:11px}
-.docsPainel{margin-top:11px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
-.docGrupo{background:#FBFCFA;border:1.5px solid var(--linha);border-radius:12px;padding:11px 12px}
-.docGrupoTitulo{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--folha);margin-bottom:7px}
-.docGrupoTitulo em{font-style:normal;color:var(--tinta-2);font-weight:700;margin-left:3px}
-.docLinha{display:flex;align-items:center;gap:8px;padding:7px 6px;border-radius:8px;text-decoration:none;color:var(--tinta);transition:background .12s}
-.docLinha:hover{background:var(--brotinho-2)}
-.docLinha + .docLinha{border-top:1px solid var(--linha)}
-.docIco{flex-shrink:0}
-.docNome{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.docAbrir{flex-shrink:0;font-size:12px;font-weight:700;color:var(--folha)}
-.docVazio{font-size:12.5px;color:var(--tinta-2)}
-.fichaCliente{border-top:1.5px dashed var(--linha);padding-top:15px;margin-top:13px}
-.gradeFicha{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:560px){.gradeFicha{grid-template-columns:1fr}}
-.campo label{display:block;font-size:11px;font-weight:800;color:var(--tinta-2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
-.campo input{width:100%;border:1.5px solid var(--linha);border-radius:var(--raio-p);padding:12px 14px;font-size:16px;background:#FDFDFC;transition:border-color .15s, box-shadow .15s}
-.campo input:focus{outline:none;border-color:var(--folha);box-shadow:0 0 0 3px #2E7D5B22}
+.fichaCliente{border-top:1px solid var(--linha);padding-top:15px;margin-top:14px}
 
-/* ---------- FAIXAS ---------- */
+/* documentos: sóbrio e alinhado */
+.docsCliente{border-top:1px solid var(--linha);margin-top:13px;padding-top:12px}
+.docsRotulo{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);margin-right:8px}
+.docsToggle{display:inline-flex;align-items:center;gap:9px;background:none;border:none;padding:2px 0;
+  font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2);transition:color .14s}
+.docsToggle:hover{color:var(--mata)}
+.docsToggle em{font-style:normal;font-family:var(--display);background:var(--mata);color:#fff;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:700;letter-spacing:0}
+.docsToggle .seta{width:14px;height:14px;color:var(--tinta-2);transition:transform .18s}
+.docsToggle.aberto .seta{transform:rotate(180deg)}
+.docsPainel{margin-top:13px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.docGrupo{background:var(--branco);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}
+.docGrupoTitulo{display:flex;align-items:baseline;gap:7px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mata);
+  border-bottom:1.5px solid var(--brotinho);padding-bottom:8px;margin-bottom:4px}
+.docGrupoTitulo em{font-style:normal;color:var(--tinta-2);font-weight:700;letter-spacing:0}
+.docLinha{display:flex;align-items:center;gap:9px;padding:8px 2px;text-decoration:none;color:var(--tinta);transition:background .12s;border-radius:7px}
+.docLinha:hover{background:var(--brotinho-2)}
+.docLinha + .docLinha{border-top:1px solid #EFF3EE}
+.docIco{flex-shrink:0;width:15px;height:15px;color:var(--tinta-2);display:flex}
+.docIco svg{width:15px;height:15px}
+.docLinha:hover .docIco{color:var(--folha)}
+.docNome{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docAbrir{flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--linha-2);transition:color .12s}
+.docLinha:hover .docAbrir{color:var(--folha)}
+.docVazio{font-size:12.5px;color:var(--tinta-2)}
+
 .orcAnteriores{background:var(--ambar-fundo);border:1.5px solid var(--ambar-borda);border-left-width:5px;color:var(--ambar-tinta);
   border-radius:12px;padding:12px 15px;font-size:14px;margin-bottom:14px;line-height:1.5}
 .orcAnteriores .ver{background:none;border:none;padding:0;font-size:13px;font-weight:700;text-decoration:underline;color:inherit;margin-left:6px}
@@ -728,10 +729,11 @@ function desenharOrcAnteriores(lista) {
 }
 
 function iconeDoc(tipo) {
-  const t = String(tipo).toLowerCase();
-  if (t === 'pdf') return '📄';
-  if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(t)) return '🖼️';
-  return '📎';
+  const tp = String(tipo).toLowerCase();
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  if (['jpg', 'jpeg', 'png', 'webp', 'heic', 'gif'].includes(tp))
+    return svg('<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.2-4.2L6 22"/>');
+  return svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/>');
 }
 
 function desenharDocumentos(grupos) {
@@ -750,17 +752,16 @@ function desenharDocumentos(grupos) {
         <a class="docLinha" href="/api/arquivo?arquivo=${encodeURIComponent(d.id)}" target="_blank" rel="noopener">
           <span class="docIco">${iconeDoc(d.tipo)}</span>
           <span class="docNome" title="${escapeHtml(d.nome)}">${escapeHtml(d.nome)}</span>
-          <span class="docAbrir">abrir ›</span>
+          <span class="docAbrir">Abrir</span>
         </a>`).join('')}
     </div>`).join('');
   box.innerHTML = `
-    <button class="docsToggle" id="btnDocs">📎 Documentos <em>${total}</em><span class="seta">▾</span></button>
+    <button class="docsToggle" id="btnDocs">Documentos<em>${total}</em><svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
     <div class="docsPainel escondido" id="docsPainel">${corpo}</div>`;
   $('#btnDocs').addEventListener('click', () => {
     const p = $('#docsPainel');
-    const abrindo = p.classList.contains('escondido');
     p.classList.toggle('escondido');
-    $('#btnDocs').querySelector('.seta').textContent = abrindo ? '▴' : '▾';
+    $('#btnDocs').classList.toggle('aberto', !p.classList.contains('escondido'));
   });
 }
 
