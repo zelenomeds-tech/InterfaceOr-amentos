@@ -189,6 +189,34 @@ async function catalogoProdutos() {
   return cacheCatalogo.dados;
 }
 
+// ---------- PROPRIEDADES DE ANEXO (documentos por tipo) ----------
+// Descobre nas propriedades de contato e de negócio as que guardam anexos
+// (rótulo ou nome com "anexo"). Cada uma vira um grupo de documentos com o
+// próprio nome: "Anexo da Receita" → grupo "Receita", e assim por diante.
+let cachePropsAnexo = { quando: 0, dados: null };
+async function propriedadesDeAnexo() {
+  const agora = Date.now();
+  if (cachePropsAnexo.dados && agora - cachePropsAnexo.quando < 30 * 60 * 1000) return cachePropsAnexo.dados;
+  const limpar = rotulo => {
+    const semPrefixo = String(rotulo || '').replace(/^anexos?\s*(da|de|do|das|dos)?\s*/i, '').trim();
+    const base = semPrefixo || String(rotulo || '');
+    return base.charAt(0).toUpperCase() + base.slice(1);
+  };
+  const dados = { contacts: [], deals: [] };
+  for (const objeto of ['contacts', 'deals']) {
+    try {
+      const r = await hs('/crm/v3/properties/' + objeto);
+      for (const p of (r.results || [])) {
+        if (normTexto(p.label).includes('anexo') || String(p.name).startsWith('anexo')) {
+          dados[objeto].push({ name: p.name, titulo: limpar(p.label) });
+        }
+      }
+    } catch (e) { /* sem escopo: segue sem esse objeto */ }
+  }
+  cachePropsAnexo = { quando: agora, dados };
+  return dados;
+}
+
 // ---------- PRODUTOS VENDÁVEIS ----------
 // ⚠️ FILTRO DE NOME: por decisão da operação, o painel só mostra produtos
 // cujo nome contém "anova" (tem itens Ativos no HubSpot que não podem ser
@@ -261,4 +289,4 @@ function casarReceita(itensReceita, produtos) {
   return { liberados, grupos: Object.values(grupos) };
 }
 
-module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita, produtosVendaveis };
+module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita, produtosVendaveis, propriedadesDeAnexo };
