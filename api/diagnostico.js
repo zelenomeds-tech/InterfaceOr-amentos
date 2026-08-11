@@ -1,4 +1,4 @@
-const { CFG, hs, json, catalogoProdutos } = require('./_lib.js');
+const { CFG, hs, json, catalogoProdutos, produtosVendaveis } = require('./_lib.js');
 
 // GET /api/diagnostico — abre no navegador para conferir a instalação.
 // Mostra: variáveis, conexão com o HubSpot, quais e-mails da lista de login
@@ -40,6 +40,9 @@ module.exports = async (req, res) => {
           valorConsideradoAtivo: valorAtivo || '',
           valoresDeStatusEncontrados: contagemStatus,
           propriedadeGrupo: propGrupo || '⚠️ não encontrada (nenhum produto casa com a receita)',
+          categoriasEncontradas: [...new Set(produtos.filter(p => p.ativo).map(p => p.categoriaLoja || '(vazio)'))],
+          filtroDeNome: (process.env.FILTRO_NOME_PRODUTO || 'anova (padrão)'),
+          mostradosNoPainel: produtosVendaveis(produtos).length,
           ativos: produtos.filter(p => p.ativo).length,
           inativosOuSemStatus: produtos.filter(p => !p.ativo).length,
           ativosSemGrupo: produtos.filter(p => p.ativo && !p.categoria).map(p => p.nome),
