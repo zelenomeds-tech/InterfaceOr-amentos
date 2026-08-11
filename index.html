@@ -145,7 +145,7 @@ img{display:block}
 
 /* ---------- PRODUTOS ---------- */
 .gradeProdutos{display:flex;flex-direction:column;gap:9px}
-.prodLinha{position:relative;display:flex;align-items:center;gap:13px;background:var(--branco);
+.prodLinha{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:13px;background:var(--branco);
   border:1.5px solid var(--linha);border-radius:var(--raio);padding:11px 13px;
   transition:border-color .16s, box-shadow .16s, transform .16s}
 .prodLinha:hover{border-color:var(--linha-2);box-shadow:var(--sombra);transform:translateY(-1px)}
@@ -156,7 +156,7 @@ img{display:block}
 .prodLinha.bloqueado img{filter:grayscale(1)}
 .prodLinha img,.prodLinha .miniSem{width:58px;height:58px;border-radius:12px;object-fit:cover;background:var(--brotinho-2);flex-shrink:0}
 .prodLinha .miniSem{display:flex;align-items:center;justify-content:center;color:#B7C8BC}
-.prodLinha .meio{flex:1;min-width:0}
+.prodLinha .meio{flex:1 1 0;min-width:150px}
 .prodLinha .meio b{display:block;font-size:14px;font-weight:700;line-height:1.35}
 .prodLinha .meio .preco{font-family:var(--display);font-weight:700;font-size:15.5px;color:var(--mata);font-variant-numeric:tabular-nums}
 .prodLinha .limCol{flex:0 0 168px;min-width:0}
