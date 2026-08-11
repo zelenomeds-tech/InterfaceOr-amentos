@@ -159,8 +159,16 @@ img{display:block}
 .prodLinha .meio{flex:1;min-width:0}
 .prodLinha .meio b{display:block;font-size:14px;font-weight:700;line-height:1.35}
 .prodLinha .meio .preco{font-family:var(--display);font-weight:700;font-size:15.5px;color:var(--mata);font-variant-numeric:tabular-nums}
-.prodLinha .limReceita{display:block;font-size:12px;font-weight:700;color:var(--folha);margin-top:2px}
+.prodLinha .limCol{flex:0 0 168px;min-width:0}
+.prodLinha .limReceita{display:block;font-size:12px;font-weight:700;color:var(--folha);line-height:1.35}
 .prodLinha .limReceita.noLimite{color:var(--erro)}
+.stepper.zerado{border-color:var(--linha-2)}
+.stepper.zerado button[data-acao="mais"]:not(:disabled){background:var(--folha);color:#fff}
+@media(max-width:700px){
+  .prodLinha{flex-wrap:wrap}
+  .prodLinha .limCol{flex:1 1 100%;order:5;padding-left:71px;margin-top:-3px}
+  .prodLinha .limCol:empty{display:none}
+}
 .prodLinha .acao{flex-shrink:0;width:152px;display:flex;justify-content:flex-end}
 .prodLinha .acao .stepper,.prodLinha .acao .btnAdd,.prodLinha .acao .rotuloBloq{width:100%}
 @media(max-width:480px){.prodLinha .acao{width:124px}}
@@ -885,11 +893,14 @@ async function carregarProdutos() {
 $('#buscaProduto').addEventListener('input', e => { estado.paginaProdutos = 1; desenharProdutos(e.target.value.trim().toLowerCase()); });
 
 function htmlMeio(p) {
-  const liberado = produtoLiberado(p);
+  return `<b title="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</b>`;
+}
+function htmlLimite(p) {
+  if (!produtoLiberado(p)) return '';
+  const lim = textoLimiteReceita(p);
+  if (!lim) return '';
   const cabeMais = podeAdicionarMais(p);
-  const lim = liberado ? textoLimiteReceita(p) : '';
-  return `<b title="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</b>`
-    + (lim ? `<span class="limReceita ${!cabeMais ? 'noLimite' : ''}">${escapeHtml(lim)}</span>` : '');
+  return `<span class="limReceita ${!cabeMais ? 'noLimite' : ''}">${escapeHtml(lim)}</span>`;
 }
 function htmlAcao(p) {
   const qtd = estado.carrinho.get(p.id) || 0;
@@ -897,8 +908,11 @@ function htmlAcao(p) {
   const lendo = estado.receita === null;
   const cabeMais = podeAdicionarMais(p);
   if (!liberado) return `<div class="rotuloBloq">${lendo ? 'Conferindo receita…' : 'Não consta na receita'}</div>`;
-  if (qtd) return `<div class="stepper"><button data-acao="menos" aria-label="Tirar 1">−</button><span class="qtd">${qtd}</span><button data-acao="mais" aria-label="Adicionar 1" ${cabeMais ? '' : 'disabled title="Limite da receita atingido"'}>+</button></div>`;
-  return cabeMais ? `<button class="btnAdd" data-acao="add">Adicionar</button>` : `<div class="rotuloBloq">Limite da receita</div>`;
+  return `<div class="stepper ${qtd ? '' : 'zerado'}">
+    <button data-acao="menos" aria-label="Tirar 1" ${qtd ? '' : 'disabled'}>−</button>
+    <span class="qtd">${qtd}</span>
+    <button data-acao="mais" aria-label="Adicionar 1" ${cabeMais ? '' : 'disabled title="Limite da receita atingido"'}>+</button>
+  </div>`;
 }
 
 let filtroAtual = '';
@@ -940,6 +954,7 @@ function desenharProdutos(filtro) {
     <div class="prodLinha ${qtd ? 'noCarrinho' : ''} ${produtoLiberado(p) ? '' : 'bloqueado'}" data-id="${p.id}">
       ${p.foto ? `<img src="${escapeHtml(p.foto)}" alt="" loading="lazy" onerror="this.outerHTML=zSemMini()">` : `<div class="miniSem">${semFotoSvg()}</div>`}
       <div class="meio">${htmlMeio(p)}</div>
+      <div class="limCol">${htmlLimite(p)}</div>
       <div class="precoCol">${brl(p.preco)}</div>
       <div class="acao">${htmlAcao(p)}</div>
     </div>`;
@@ -960,6 +975,8 @@ function atualizarLinhasVisiveis() {
     linha.classList.toggle('noCarrinho', (estado.carrinho.get(p.id) || 0) > 0);
     linha.classList.toggle('bloqueado', !produtoLiberado(p));
     linha.querySelector('.meio').innerHTML = htmlMeio(p);
+    const lc = linha.querySelector('.limCol');
+    if (lc) lc.innerHTML = htmlLimite(p);
     linha.querySelector('.acao').innerHTML = htmlAcao(p);
   });
 }
@@ -987,7 +1004,7 @@ $('#gradeProdutos').addEventListener('click', ev => {
   if ((acao === 'add' || acao === 'mais') && !podeAdicionarMais(p)) return;
   if (acao === 'add' || acao === 'mais') {
     estado.carrinho.set(p.id, atual + 1);
-    if (acao === 'add') toast('Adicionado: ' + p.nome);
+    if (atual === 0) toast('Adicionado: ' + p.nome);
   }
   if (acao === 'menos') {
     if (atual <= 1) { estado.carrinho.delete(p.id); toast('Removido: ' + p.nome); }
