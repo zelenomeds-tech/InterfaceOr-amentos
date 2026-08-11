@@ -1,6 +1,7 @@
 {
   "functions": {
-    "api/receita.js": { "maxDuration": 60 }
+    "api/receita.js": { "maxDuration": 60 },
+    "api/abrir.js": { "maxDuration": 30 }
   },
   "headers": [
     {
