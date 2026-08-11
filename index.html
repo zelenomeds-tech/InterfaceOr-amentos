@@ -675,7 +675,7 @@ const estado = {
 
 async function api(caminho, opts) {
   const r = await fetch(caminho, { credentials: 'same-origin', ...opts });
-  const j = await r.json().catch(() => ({ ok:false, erro:'Resposta inválida do servidor' }));
+  const j = await r.json().catch(() => ({ ok: false, erro: 'O servidor demorou ou falhou (HTTP ' + r.status + ') — tente de novo em instantes.' }));
   if (r.status === 401 && !caminho.startsWith('/api/abrir')) {
     mostrarAviso('Sessão expirada — abra de novo pelo negócio no HubSpot.', true);
   }
