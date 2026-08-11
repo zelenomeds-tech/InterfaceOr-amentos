@@ -58,6 +58,34 @@ module.exports = async (req, res) => {
       } catch (e) { /* sem nome, segue */ }
     }
 
+    // documentos anexados (arquivos nas notas do contato e do negócio)
+    let documentos = [];
+    try {
+      const idsArquivos = [];
+      for (const [tipo, id] of [['contacts', contatoId], ['deals', negocioId]]) {
+        const assocNotas = await hs('/crm/v3/objects/' + tipo + '/' + id + '/associations/notes');
+        const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 50);
+        if (!idsNotas.length) continue;
+        const notas = await hs('/crm/v3/objects/notes/batch/read', {
+          method: 'POST',
+          body: JSON.stringify({ inputs: idsNotas.map(i => ({ id: i })), properties: ['hs_attachment_ids', 'hs_timestamp'] }),
+        });
+        for (const n of (notas.results || []).sort((a, b) => String(b.properties?.hs_timestamp || '').localeCompare(String(a.properties?.hs_timestamp || '')))) {
+          for (const aid of String(n.properties?.hs_attachment_ids || '').split(';')) {
+            const limpo = aid.trim();
+            if (limpo && !idsArquivos.includes(limpo)) idsArquivos.push(limpo);
+          }
+        }
+      }
+      const detalhes = await Promise.all(idsArquivos.slice(0, 8).map(async fid => {
+        try {
+          const f = await hs('/files/v3/files/' + fid);
+          return { id: String(fid), nome: (f.name || 'arquivo') + (f.extension ? '.' + f.extension : ''), tipo: f.extension || '' };
+        } catch (e) { return null; }
+      }));
+      documentos = detalhes.filter(Boolean);
+    } catch (e) { /* sem escopo de files ou sem anexos: segue sem a lista */ }
+
     // orçamentos já existentes neste negócio (para o vendedor não duplicar sem saber)
     let orcamentosAnteriores = [];
     try {
@@ -93,6 +121,7 @@ module.exports = async (req, res) => {
       negocio: { id: negocioId, nome: neg.properties?.dealname || '(sem nome)', etapaId },
       cliente,
       vendedor,
+      documentos,
       orcamentosAnteriores,
     });
   } catch (e) {
