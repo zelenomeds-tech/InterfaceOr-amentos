@@ -1,4 +1,4 @@
-const { CFG, sessaoDoRequest, setCookieSessao, hs, json } = require('./_lib.js');
+const { CFG, sessaoDoRequest, setCookieSessao, hs, json, propriedadesDeAnexo } = require('./_lib.js');
 
 // GET /api/abrir?negocio=ID&chave=CHAVE
 // Porta de entrada sem login: o link na propriedade do negócio no HubSpot
@@ -23,8 +23,10 @@ module.exports = async (req, res) => {
   if (!negocioId) return json(res, 400, { ok: false, erro: 'O link não trouxe o negócio — confira a propriedade no HubSpot' });
 
   try {
+    const propsAnexo = await propriedadesDeAnexo();
+    const propsNeg = ['dealname', 'dealstage', 'pipeline', 'hubspot_owner_id', ...propsAnexo.deals.map(p => p.name)];
     const neg = await hs('/crm/v3/objects/deals/' + negocioId
-      + '?properties=dealname,dealstage,pipeline,hubspot_owner_id&associations=contacts');
+      + '?properties=' + propsNeg.join(',') + '&associations=contacts');
 
     const etapaId = String(neg.properties?.dealstage || '');
     const permitidas = (process.env.ETAPAS_LISTA || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -36,8 +38,8 @@ module.exports = async (req, res) => {
     const contatoId = neg.associations?.contacts?.results?.[0]?.id;
     if (!contatoId) return json(res, 400, { ok: false, erro: 'Este negócio não tem contato associado no HubSpot — associe o cliente lá primeiro.' });
 
-    const ct = await hs('/crm/v3/objects/contacts/' + contatoId
-      + '?properties=firstname,lastname,email,phone,mobilephone,zip,' + CFG.propCpf);
+    const propsCt = ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'zip', CFG.propCpf, ...propsAnexo.contacts.map(p => p.name)];
+    const ct = await hs('/crm/v3/objects/contacts/' + contatoId + '?properties=' + propsCt.join(','));
     const p = ct.properties || {};
     const cliente = {
       id: String(contatoId),
@@ -58,10 +60,25 @@ module.exports = async (req, res) => {
       } catch (e) { /* sem nome, segue */ }
     }
 
-    // documentos anexados (arquivos nas notas do contato e do negócio)
+    // documentos separados PELO TIPO: cada propriedade de anexo vira um grupo
+    // ("Receita", "CNH"...); anexos soltos das notas caem em "Outros anexos".
     let documentos = [];
     try {
-      const idsArquivos = [];
+      const grupos = new Map(); // titulo -> Set de ids de arquivo
+      const registrar = (titulo, valor) => {
+        for (const bruto of String(valor || '').split(/[;,]/)) {
+          const fid = bruto.trim().replace(/\D/g, '');
+          if (!fid) continue;
+          if (!grupos.has(titulo)) grupos.set(titulo, new Set());
+          grupos.get(titulo).add(fid);
+        }
+      };
+      for (const p of propsAnexo.contacts) registrar(p.titulo, ct.properties?.[p.name]);
+      for (const p of propsAnexo.deals) registrar(p.titulo, neg.properties?.[p.name]);
+
+      // anexos das notas que não estão em nenhuma propriedade → Outros anexos
+      const jaTem = new Set([...grupos.values()].flatMap(s => [...s]));
+      const soltos = [];
       for (const [tipo, id] of [['contacts', contatoId], ['deals', negocioId]]) {
         const assocNotas = await hs('/crm/v3/objects/' + tipo + '/' + id + '/associations/notes');
         const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 50);
@@ -73,18 +90,28 @@ module.exports = async (req, res) => {
         for (const n of (notas.results || []).sort((a, b) => String(b.properties?.hs_timestamp || '').localeCompare(String(a.properties?.hs_timestamp || '')))) {
           for (const aid of String(n.properties?.hs_attachment_ids || '').split(';')) {
             const limpo = aid.trim();
-            if (limpo && !idsArquivos.includes(limpo)) idsArquivos.push(limpo);
+            if (limpo && !jaTem.has(limpo) && !soltos.includes(limpo)) soltos.push(limpo);
           }
         }
       }
-      const detalhes = await Promise.all(idsArquivos.slice(0, 8).map(async fid => {
+      if (soltos.length) grupos.set('Outros anexos', new Set(soltos.slice(0, 8)));
+
+      // detalhes dos arquivos (nome/extensão), no máximo 16 no total
+      const todosIds = [...new Set([...grupos.values()].flatMap(s => [...s]))].slice(0, 16);
+      const detalhes = new Map();
+      await Promise.all(todosIds.map(async fid => {
         try {
           const f = await hs('/files/v3/files/' + fid);
-          return { id: String(fid), nome: (f.name || 'arquivo') + (f.extension ? '.' + f.extension : ''), tipo: f.extension || '' };
-        } catch (e) { return null; }
+          detalhes.set(fid, { id: fid, nome: (f.name || 'arquivo') + (f.extension ? '.' + f.extension : ''), tipo: f.extension || '' });
+        } catch (e) { /* arquivo apagado: ignora */ }
       }));
-      documentos = detalhes.filter(Boolean);
-    } catch (e) { /* sem escopo de files ou sem anexos: segue sem a lista */ }
+      for (const [titulo, ids] of grupos) {
+        const itens = [...ids].map(fid => detalhes.get(fid)).filter(Boolean);
+        if (itens.length) documentos.push({ grupo: titulo, itens });
+      }
+      // "Outros anexos" sempre por último
+      documentos.sort((a, b) => (a.grupo === 'Outros anexos') - (b.grupo === 'Outros anexos'));
+    } catch (e) { /* sem escopo de files: segue sem documentos */ }
 
     // orçamentos já existentes neste negócio (para o vendedor não duplicar sem saber)
     let orcamentosAnteriores = [];
