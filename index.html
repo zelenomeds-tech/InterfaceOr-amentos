@@ -364,6 +364,24 @@ table.docItens td b{font-variant-numeric:tabular-nums}
 /* ============================================================
    USABILIDADE v4
    ============================================================ */
+/* vitrine de categorias */
+.gradeCats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:11px}
+.catCard{display:flex;flex-direction:column;align-items:flex-start;gap:3px;position:relative;text-align:left;
+  background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:18px 18px 16px;
+  transition:border-color .16s, box-shadow .16s, transform .16s;cursor:pointer}
+.catCard:hover{border-color:var(--folha);box-shadow:var(--sombra);transform:translateY(-2px)}
+.catCard b{font-family:var(--display);font-weight:800;font-size:18px;color:var(--mata)}
+.catCard span{font-size:12.5px;color:var(--tinta-2)}
+.catCard em{position:absolute;right:15px;top:50%;transform:translateY(-50%);font-style:normal;
+  font-size:20px;color:var(--folha);transition:transform .16s}
+.catCard:hover em{transform:translateY(-50%) translateX(3px)}
+.catTopo{display:flex;align-items:center;gap:11px;margin-bottom:11px}
+.catTopo button{border:1.5px solid var(--linha);background:var(--branco);border-radius:999px;
+  padding:7px 14px;font-size:13px;font-weight:700;color:var(--folha);transition:.14s}
+.catTopo button:hover{border-color:var(--folha);background:var(--brotinho-2)}
+.catTopo b{font-family:var(--display);font-size:17px;color:var(--mata)}
+.catTopo span{font-size:12.5px;color:var(--tinta-2);margin-left:auto;font-variant-numeric:tabular-nums}
+
 /* skeleton */
 .prodLinha.skel{pointer-events:none}
 .skelFoto{width:58px;height:58px;border-radius:12px;flex-shrink:0}
@@ -601,6 +619,7 @@ const estado = {
   descontos: new Map(), // produtoId -> { tipo: '%' | 'R$', valor: number }
   receita: null,        // null=carregando · {status:'ok'|'sem'|'erro', liberados:Set, ...}
   paginaProdutos: 1,
+  categoriaSel: null,   // null = vitrine de categorias
   passo: 1,
 };
 
@@ -883,15 +902,39 @@ function htmlAcao(p) {
 }
 
 let filtroAtual = '';
+function desenharCategorias() {
+  const grade = $('#gradeProdutos');
+  const contagem = {};
+  for (const p of estado.produtos) {
+    const c = p.categoria || 'Outros';
+    contagem[c] = (contagem[c] || 0) + 1;
+  }
+  const cats = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+  grade.innerHTML = '<div class="gradeCats">' + cats.map(([nome, n]) => `
+    <button class="catCard" data-cat="${escapeHtml(nome)}">
+      <b>${escapeHtml(nome)}</b>
+      <span>${n} ${n === 1 ? 'produto' : 'produtos'}</span>
+      <em>›</em>
+    </button>`).join('') + '</div>';
+}
+
 function desenharProdutos(filtro) {
   filtroAtual = filtro || '';
   const grade = $('#gradeProdutos');
-  const lista = estado.produtos.filter(p => !filtroAtual || p.nome.toLowerCase().includes(filtroAtual) || (p.sku||'').toLowerCase().includes(filtroAtual));
-  if (!lista.length) { grade.innerHTML = '<div class="vazio">Nenhum produto com esse nome.</div>'; return; }
+  // sem busca e sem categoria escolhida: vitrine de categorias
+  if (!filtroAtual && !estado.categoriaSel) { desenharCategorias(); return; }
+  const lista = estado.produtos.filter(p =>
+    (filtroAtual
+      ? (p.nome.toLowerCase().includes(filtroAtual) || (p.sku||'').toLowerCase().includes(filtroAtual))
+      : (p.categoria || 'Outros') === estado.categoriaSel));
+  if (!lista.length) { grade.innerHTML = '<div class="catTopo"><button id="btnVoltarCats">‹ Categorias</button></div><div class="vazio">Nenhum produto ' + (filtroAtual ? 'com esse nome.' : 'nesta categoria.') + '</div>'; return; }
   const totalPaginas = Math.ceil(lista.length / PRODUTOS_POR_PAGINA);
   estado.paginaProdutos = Math.min(Math.max(1, estado.paginaProdutos), totalPaginas);
   const pagina = lista.slice((estado.paginaProdutos - 1) * PRODUTOS_POR_PAGINA, estado.paginaProdutos * PRODUTOS_POR_PAGINA);
-  grade.innerHTML = pagina.map(p => {
+  const topo = filtroAtual
+    ? `<div class="catTopo"><button id="btnVoltarCats">‹ Categorias</button><b>Busca: “${escapeHtml(filtroAtual)}”</b><span>${lista.length} ${lista.length === 1 ? 'resultado' : 'resultados'}</span></div>`
+    : `<div class="catTopo"><button id="btnVoltarCats">‹ Categorias</button><b>${escapeHtml(estado.categoriaSel)}</b><span>${lista.length} ${lista.length === 1 ? 'produto' : 'produtos'}</span></div>`;
+  grade.innerHTML = topo + pagina.map(p => {
     const qtd = estado.carrinho.get(p.id) || 0;
     return `
     <div class="prodLinha ${qtd ? 'noCarrinho' : ''} ${produtoLiberado(p) ? '' : 'bloqueado'}" data-id="${p.id}">
@@ -925,6 +968,13 @@ function atualizarLinhasVisiveis() {
 $('#gradeProdutos').addEventListener('click', ev => {
   const refazer = ev.target.closest('[data-refazer="produtos"]');
   if (refazer) { carregarProdutos(); return; }
+  const cat = ev.target.closest('.catCard');
+  if (cat) { estado.categoriaSel = cat.dataset.cat; estado.paginaProdutos = 1; desenharProdutos(''); return; }
+  if (ev.target.closest('#btnVoltarCats')) {
+    estado.categoriaSel = null; estado.paginaProdutos = 1;
+    $('#buscaProduto').value = ''; filtroAtual = '';
+    desenharProdutos(''); return;
+  }
   if (ev.target.closest('#pagAnterior')) { estado.paginaProdutos--; desenharProdutos(filtroAtual); $('#buscaProduto').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (ev.target.closest('#pagProxima')) { estado.paginaProdutos++; desenharProdutos(filtroAtual); $('#buscaProduto').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   const botao = ev.target.closest('[data-acao]');
