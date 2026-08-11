@@ -61,50 +61,57 @@ module.exports = async (req, res) => {
     }
 
     // documentos separados PELO TIPO: cada propriedade de anexo vira um grupo
-    // ("Receita", "CNH"...); anexos soltos das notas caem em "Outros anexos".
+    // ("Receita", "CNH"...); anexos soltos das notas caem nos grupos por nome.
+    // Cada etapa é blindada: se uma falhar (ex.: escopo de notas), as outras seguem.
     let documentos = [];
-    try {
-      const grupos = new Map(); // titulo -> Set de ids de arquivo
+    {
+      const grupos = new Map();
       const registrar = (titulo, valor) => {
-        for (const bruto of String(valor || '').split(/[;,]/)) {
-          const fid = bruto.trim().replace(/\D/g, '');
-          if (!fid) continue;
+        for (const bruto of String(valor || '').split(/[;,\s]+/)) {
+          const fid = bruto.trim();
+          if (!/^\d{5,}$/.test(fid)) continue; // só ids de arquivo válidos
           if (!grupos.has(titulo)) grupos.set(titulo, new Set());
           grupos.get(titulo).add(fid);
         }
       };
-      for (const p of propsAnexo.contacts) registrar(p.titulo, ct.properties?.[p.name]);
-      for (const p of propsAnexo.deals) registrar(p.titulo, neg.properties?.[p.name]);
+      // 1) grupos oficiais: propriedades de anexo do contato e do negócio
+      try {
+        for (const p of propsAnexo.contacts) registrar(p.titulo, ct.properties?.[p.name]);
+        for (const p of propsAnexo.deals) registrar(p.titulo, neg.properties?.[p.name]);
+      } catch (e) { /* segue */ }
 
-      // anexos das notas que não estão em nenhuma propriedade → Outros anexos
-      const jaTem = new Set([...grupos.values()].flatMap(s => [...s]));
+      // 2) anexos soltos das notas (se o token não tiver escopo de notas, só pula)
       const soltos = [];
-      for (const [tipo, id] of [['contacts', contatoId], ['deals', negocioId]]) {
-        const assocNotas = await hs('/crm/v3/objects/' + tipo + '/' + id + '/associations/notes');
-        const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 50);
-        if (!idsNotas.length) continue;
-        const notas = await hs('/crm/v3/objects/notes/batch/read', {
-          method: 'POST',
-          body: JSON.stringify({ inputs: idsNotas.map(i => ({ id: i })), properties: ['hs_attachment_ids', 'hs_timestamp'] }),
-        });
-        for (const n of (notas.results || []).sort((a, b) => String(b.properties?.hs_timestamp || '').localeCompare(String(a.properties?.hs_timestamp || '')))) {
-          for (const aid of String(n.properties?.hs_attachment_ids || '').split(';')) {
-            const limpo = aid.trim();
-            if (limpo && !jaTem.has(limpo) && !soltos.includes(limpo)) soltos.push(limpo);
+      try {
+        const jaTem = new Set([...grupos.values()].flatMap(s => [...s]));
+        for (const [tipo, id] of [['contacts', contatoId], ['deals', negocioId]]) {
+          const assocNotas = await hs('/crm/v3/objects/' + tipo + '/' + id + '/associations/notes');
+          const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 50);
+          if (!idsNotas.length) continue;
+          const notas = await hs('/crm/v3/objects/notes/batch/read', {
+            method: 'POST',
+            body: JSON.stringify({ inputs: idsNotas.map(i => ({ id: i })), properties: ['hs_attachment_ids', 'hs_timestamp'] }),
+          });
+          for (const n of (notas.results || []).sort((a, b) => String(b.properties?.hs_timestamp || '').localeCompare(String(a.properties?.hs_timestamp || '')))) {
+            for (const aid of String(n.properties?.hs_attachment_ids || '').split(';')) {
+              const limpo = aid.trim();
+              if (/^\d{5,}$/.test(limpo) && !jaTem.has(limpo) && !soltos.includes(limpo)) soltos.push(limpo);
+            }
           }
         }
-      }
-      // detalhes dos arquivos (nome/extensão), no máximo 20 no total
+      } catch (e) { /* sem escopo de notas: os grupos oficiais seguem valendo */ }
+
+      // 3) detalhes dos arquivos (cada um blindado; no máximo 20)
       const todosIds = [...new Set([...[...grupos.values()].flatMap(s => [...s]), ...soltos])].slice(0, 20);
       const detalhes = new Map();
       await Promise.all(todosIds.map(async fid => {
         try {
           const f = await hs('/files/v3/files/' + fid);
           detalhes.set(fid, { id: fid, nome: (f.name || 'arquivo') + (f.extension ? '.' + f.extension : ''), tipo: f.extension || '' });
-        } catch (e) { /* arquivo apagado: ignora */ }
+        } catch (e) { /* sem escopo de files ou arquivo apagado: pula este */ }
       }));
 
-      // anexos soltos: classifica pelo NOME do arquivo em RG/comprovante/receita
+      // 4) soltos classificados pelo nome do arquivo
       const classificar = nome => {
         const n = String(nome).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         if (/receita|prescri/.test(n)) return 'Receita';
@@ -120,10 +127,13 @@ module.exports = async (req, res) => {
         grupos.get(titulo).add(fid);
       }
 
-      // ordem: grupos oficiais primeiro, depois os classificados, "Outros anexos" no fim
+      for (const [titulo, ids] of grupos) {
+        const itens = [...ids].map(fid => detalhes.get(fid)).filter(Boolean);
+        if (itens.length) documentos.push({ grupo: titulo, itens });
+      }
       const peso = g => g === 'Outros anexos' ? 99 : ['Identidade (RG/CNH)', 'Comprovante de endereço'].includes(g) ? 50 : 0;
       documentos.sort((a, b) => peso(a.grupo) - peso(b.grupo));
-    } catch (e) { /* sem escopo de files: segue sem documentos */ }
+    }
 
     // orçamentos já existentes neste negócio (para o vendedor não duplicar sem saber)
     let orcamentosAnteriores = [];
