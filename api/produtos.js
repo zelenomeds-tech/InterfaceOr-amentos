@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     return json(res, 200, {
       ok: true,
       filtroAtivoFalhou: ativos.length === 0 && produtos.length > 0,
-      produtos: lista.map(({ id, nome, preco, sku, descricao, foto }) => ({ id, nome, preco, sku, descricao, foto })),
+      produtos: lista.map(({ id, nome, preco, sku, descricao, foto, categoriaLoja }) => ({ id, nome, preco, sku, descricao, foto, categoria: categoriaLoja || 'Outros' })),
     });
   } catch (e) {
     return json(res, 502, { ok: false, erro: e.message });
