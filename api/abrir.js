@@ -94,10 +94,8 @@ module.exports = async (req, res) => {
           }
         }
       }
-      if (soltos.length) grupos.set('Outros anexos', new Set(soltos.slice(0, 8)));
-
-      // detalhes dos arquivos (nome/extensão), no máximo 16 no total
-      const todosIds = [...new Set([...grupos.values()].flatMap(s => [...s]))].slice(0, 16);
+      // detalhes dos arquivos (nome/extensão), no máximo 20 no total
+      const todosIds = [...new Set([...[...grupos.values()].flatMap(s => [...s]), ...soltos])].slice(0, 20);
       const detalhes = new Map();
       await Promise.all(todosIds.map(async fid => {
         try {
@@ -105,12 +103,26 @@ module.exports = async (req, res) => {
           detalhes.set(fid, { id: fid, nome: (f.name || 'arquivo') + (f.extension ? '.' + f.extension : ''), tipo: f.extension || '' });
         } catch (e) { /* arquivo apagado: ignora */ }
       }));
-      for (const [titulo, ids] of grupos) {
-        const itens = [...ids].map(fid => detalhes.get(fid)).filter(Boolean);
-        if (itens.length) documentos.push({ grupo: titulo, itens });
+
+      // anexos soltos: classifica pelo NOME do arquivo em RG/comprovante/receita
+      const classificar = nome => {
+        const n = String(nome).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        if (/receita|prescri/.test(n)) return 'Receita';
+        if (/\brg\b|cnh|identidade|cpf|passaporte|habilita/.test(n)) return 'Identidade (RG/CNH)';
+        if (/comprovante|endereco|residencia|fatura|conta de/.test(n)) return 'Comprovante de endereço';
+        return 'Outros anexos';
+      };
+      for (const fid of soltos.slice(0, 12)) {
+        const det = detalhes.get(fid);
+        if (!det) continue;
+        const titulo = classificar(det.nome);
+        if (!grupos.has(titulo)) grupos.set(titulo, new Set());
+        grupos.get(titulo).add(fid);
       }
-      // "Outros anexos" sempre por último
-      documentos.sort((a, b) => (a.grupo === 'Outros anexos') - (b.grupo === 'Outros anexos'));
+
+      // ordem: grupos oficiais primeiro, depois os classificados, "Outros anexos" no fim
+      const peso = g => g === 'Outros anexos' ? 99 : ['Identidade (RG/CNH)', 'Comprovante de endereço'].includes(g) ? 50 : 0;
+      documentos.sort((a, b) => peso(a.grupo) - peso(b.grupo));
     } catch (e) { /* sem escopo de files: segue sem documentos */ }
 
     // orçamentos já existentes neste negócio (para o vendedor não duplicar sem saber)
