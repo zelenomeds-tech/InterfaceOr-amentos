@@ -1,4 +1,4 @@
-const { CFG, hs, json, catalogoProdutos, produtosVendaveis } = require('./_lib.js');
+const { CFG, hs, json, catalogoProdutos, produtosVendaveis, propriedadesDeAnexo } = require('./_lib.js');
 
 // GET /api/diagnostico — abre no navegador para conferir a instalação.
 // Mostra: variáveis, conexão com o HubSpot, quais e-mails da lista de login
@@ -28,6 +28,15 @@ module.exports = async (req, res) => {
         }
       }
       saida.hubspot.conectado = true;
+
+      // Propriedades de anexo descobertas (grupos de documentos do cabeçalho)
+      try {
+        const pa = await propriedadesDeAnexo();
+        saida.documentos = {
+          propriedadesDeAnexoContato: pa.contacts.map(p => p.name + ' → ' + p.titulo),
+          propriedadesDeAnexoNegocio: pa.deals.map(p => p.name + ' → ' + p.titulo),
+        };
+      } catch (e) { saida.documentos = 'erro: ' + e.message; }
 
       // Catálogo: Status e Grupo de Liberação detectados + contagens
       try {
