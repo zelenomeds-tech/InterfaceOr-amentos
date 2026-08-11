@@ -734,29 +734,19 @@ function iconeDoc(tipo) {
   return '📎';
 }
 
-// separa os anexos por tipo de documento, pelo nome do arquivo
-function grupoDoDocumento(nome) {
-  const n = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (/receita|prescri|medic/.test(n)) return 'Receitas';
-  if (/cnh|\brg\b|identidade|cpf|passaporte|habilita/.test(n)) return 'Identidade';
-  if (/comprovante|endereco|residencia|conta de|fatura/.test(n)) return 'Comprovantes';
-  return 'Outros';
-}
-
-function desenharDocumentos(docs) {
+function desenharDocumentos(grupos) {
   const box = $('#docsCliente');
   if (!box) return;
   box.classList.remove('escondido');
-  if (!docs.length) {
+  const total = (grupos || []).reduce((s, g) => s + (g.itens ? g.itens.length : 0), 0);
+  if (!total) {
     box.innerHTML = '<span class="docsRotulo">Documentos</span><span class="docVazio">nenhum anexo no HubSpot</span>';
     return;
   }
-  const grupos = { 'Receitas': [], 'Identidade': [], 'Comprovantes': [], 'Outros': [] };
-  for (const d of docs) grupos[grupoDoDocumento(d.nome)].push(d);
-  const corpo = Object.entries(grupos).filter(([, lista]) => lista.length).map(([titulo, lista]) => `
+  const corpo = grupos.filter(g => g.itens && g.itens.length).map(g => `
     <div class="docGrupo">
-      <div class="docGrupoTitulo">${titulo} <em>${lista.length}</em></div>
-      ${lista.map(d => `
+      <div class="docGrupoTitulo">${escapeHtml(g.grupo)} <em>${g.itens.length}</em></div>
+      ${g.itens.map(d => `
         <a class="docLinha" href="/api/arquivo?arquivo=${encodeURIComponent(d.id)}" target="_blank" rel="noopener">
           <span class="docIco">${iconeDoc(d.tipo)}</span>
           <span class="docNome" title="${escapeHtml(d.nome)}">${escapeHtml(d.nome)}</span>
@@ -764,7 +754,7 @@ function desenharDocumentos(docs) {
         </a>`).join('')}
     </div>`).join('');
   box.innerHTML = `
-    <button class="docsToggle" id="btnDocs">📎 Documentos <em>${docs.length}</em><span class="seta">▾</span></button>
+    <button class="docsToggle" id="btnDocs">📎 Documentos <em>${total}</em><span class="seta">▾</span></button>
     <div class="docsPainel escondido" id="docsPainel">${corpo}</div>`;
   $('#btnDocs').addEventListener('click', () => {
     const p = $('#docsPainel');
