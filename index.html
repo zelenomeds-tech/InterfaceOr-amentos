@@ -213,6 +213,19 @@ img{display:block}
 .descItem select.descOrigem{width:96px}
 .descItem input.descValor{width:78px;font-variant-numeric:tabular-nums}
 .descItem select:focus,.descItem input:focus{outline:none;border-color:var(--folha)}
+.prodLinha .descLinha{flex:1 1 100%;order:9;display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  border-top:1.5px dashed var(--linha);margin-top:9px;padding:9px 0 1px 0}
+.prodLinha .descLinha .descRot{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-2)}
+.prodLinha .descLinha select,.prodLinha .descLinha input{border:1.5px solid var(--linha);border-radius:9px;background:#FDFDFC;font-size:13px;height:34px;padding:0 8px;transition:border-color .14s}
+.prodLinha .descLinha select.descTipo{width:60px}
+.prodLinha .descLinha select.descOrigem{width:100px}
+.prodLinha .descLinha input.descValor{width:82px;font-variant-numeric:tabular-nums}
+.prodLinha .descLinha select:focus,.prodLinha .descLinha input:focus{outline:none;border-color:var(--folha)}
+.prodLinha .descLinha .descTotalItem{margin-left:auto;font-size:13px;color:var(--tinta-2);font-variant-numeric:tabular-nums}
+.prodLinha .descLinha .descTotalItem b{font-family:var(--display);font-size:15px;color:var(--mata)}
+.prodLinha.comDesconto .descLinha{border-top-color:var(--brotinho)}
+.itemRev .tagDesc{display:inline-block;background:var(--brotinho);color:var(--mata);border-radius:999px;
+  padding:2px 10px;font-size:11.5px;font-weight:700;margin-top:4px}
 
 .blocoFrete{background:var(--branco);border:1.5px solid var(--linha);border-radius:var(--raio);padding:17px;margin:16px 0 0;box-shadow:var(--sombra)}
 .cepVisor span{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -902,6 +915,22 @@ function htmlLimite(p) {
   const cabeMais = podeAdicionarMais(p);
   return `<span class="limReceita ${!cabeMais ? 'noLimite' : ''}">${escapeHtml(lim)}</span>`;
 }
+function htmlDesconto(p) {
+  const qtd = estado.carrinho.get(p.id) || 0;
+  if (!qtd || !produtoLiberado(p)) return '';
+  const d = estado.descontos.get(p.id) || { tipo: '%', valor: 0, origem: 'pessoal' };
+  const liquido = (p.preco - descontoUnitario(p)) * qtd;
+  return `
+    <span class="descRot">Desconto</span>
+    <select class="descTipo"><option value="%" ${d.tipo === '%' ? 'selected' : ''}>%</option><option value="R$" ${d.tipo === 'R$' ? 'selected' : ''}>R$</option></select>
+    <input class="descValor" inputmode="decimal" placeholder="0" value="${d.valor > 0 ? String(d.valor).replace('.', ',') : ''}">
+    <select class="descOrigem" title="Origem do desconto">
+      <option value="pessoal" ${d.origem !== 'zeleno' ? 'selected' : ''}>Pessoal</option>
+      <option value="zeleno" ${d.origem === 'zeleno' ? 'selected' : ''}>Zeleno</option>
+    </select>
+    <span class="descTotalItem">= <b>${brl(liquido)}</b></span>`;
+}
+
 function htmlAcao(p) {
   const qtd = estado.carrinho.get(p.id) || 0;
   const liberado = produtoLiberado(p);
@@ -957,6 +986,7 @@ function desenharProdutos(filtro) {
       <div class="limCol">${htmlLimite(p)}</div>
       <div class="precoCol">${brl(p.preco)}</div>
       <div class="acao">${htmlAcao(p)}</div>
+      <div class="descLinha ${estado.carrinho.get(p.id) ? '' : 'escondido'}">${htmlDesconto(p)}</div>
     </div>`;
   }).join('')
   + (totalPaginas > 1 ? `
@@ -978,6 +1008,13 @@ function atualizarLinhasVisiveis() {
     const lc = linha.querySelector('.limCol');
     if (lc) lc.innerHTML = htmlLimite(p);
     linha.querySelector('.acao').innerHTML = htmlAcao(p);
+    const dl = linha.querySelector('.descLinha');
+    if (dl) {
+      const noCarrinho = (estado.carrinho.get(p.id) || 0) > 0;
+      const estavaVisivel = !dl.classList.contains('escondido');
+      if (noCarrinho !== estavaVisivel) { dl.classList.toggle('escondido', !noCarrinho); dl.innerHTML = htmlDesconto(p); }
+      else if (noCarrinho) { const tot = dl.querySelector('.descTotalItem b'); if (tot) tot.textContent = brl((p.preco - descontoUnitario(p)) * (estado.carrinho.get(p.id) || 0)); }
+    }
   });
 }
 
@@ -1014,6 +1051,24 @@ $('#gradeProdutos').addEventListener('click', ev => {
   atualizarChipsReceita();
   atualizarCupom();
 });
+['input', 'change'].forEach(tipoEv => $('#gradeProdutos').addEventListener(tipoEv, ev => {
+  const dl = ev.target.closest('.descLinha');
+  if (!dl) return;
+  const linha = ev.target.closest('.prodLinha');
+  const id = linha.dataset.id;
+  const tipo = dl.querySelector('.descTipo').value;
+  const valor = lerValor(dl.querySelector('.descValor').value);
+  const origem = dl.querySelector('.descOrigem').value;
+  if (valor > 0) estado.descontos.set(id, { tipo, valor, origem });
+  else estado.descontos.delete(id);
+  const p = estado.produtos.find(x => x.id === id);
+  const q = estado.carrinho.get(id) || 1;
+  const tot = dl.querySelector('.descTotalItem b');
+  if (tot) tot.textContent = brl((p.preco - descontoUnitario(p)) * q);
+  linha.classList.toggle('comDesconto', valor > 0);
+  atualizarCupom();
+}));
+
 function semFotoSvg(){ return '<svg class="semFoto" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L7 20"/></svg>'; }
 
 /* ---------- toast ---------- */
@@ -1051,9 +1106,14 @@ function atualizarCupom() {
   if (estado.passo === 2) {
     if (!estado.carrinho.size) { cupom.classList.add('escondido'); return; }
     cupom.classList.remove('escondido');
-    $('#cupomItens').textContent = qtdItens + (qtdItens === 1 ? ' item' : ' itens');
-    $('#cupomTotal').textContent = brl(subtotal);
-    $('#btnCupom').textContent = 'Revisar orçamento';
+    const { descontos } = totaisAtuais();
+    const limite = subtotal * LIMITE_DESCONTO_PCT / 100;
+    const estourou = descontos > limite + 0.005;
+    $('#cupomItens').textContent = qtdItens + (qtdItens === 1 ? ' item' : ' itens') + (descontos ? ' · desc. − ' + brl(descontos) : '');
+    $('#cupomTotal').textContent = brl(Math.max(0, subtotal - descontos));
+    const btn = $('#btnCupom');
+    btn.disabled = estourou;
+    btn.textContent = estourou ? 'Descontos acima de ' + LIMITE_DESCONTO_PCT + '% (máx ' + brl(limite) + ')' : 'Revisar orçamento';
   } else {
     cupom.classList.add('escondido');
   }
@@ -1068,54 +1128,22 @@ function montarRevisao() {
   for (const [id, q] of estado.carrinho) {
     const p = estado.produtos.find(x => x.id === id);
     if (!p) continue;
-    const d = estado.descontos.get(id) || { tipo: '%', valor: 0 };
+    const d = estado.descontos.get(id);
     const liquido = (p.preco - descontoUnitario(p)) * q;
+    const descTxt = d && d.valor > 0
+      ? `<span class="tagDesc">desconto ${d.tipo === '%' ? String(d.valor).replace('.', ',') + '%' : brl(d.valor)} · ${d.origem === 'zeleno' ? 'Zeleno' : 'Pessoal'}</span>`
+      : '';
     linhas.push(`
-      <div class="itemRev ${d.valor > 0 ? 'comDesconto' : ''}" data-id="${p.id}">
+      <div class="itemRev ${d && d.valor > 0 ? 'comDesconto' : ''}">
         ${p.foto ? `<img src="${escapeHtml(p.foto)}" alt="" onerror="this.outerHTML=zSemMini()">` : `<div class="miniSem">${semFotoSvg()}</div>`}
         <div class="meio">
           <b>${escapeHtml(p.nome)}</b>
-          <span>${q} × ${brl(p.preco)}</span>
-          <div class="descItem">
-            <span class="descRot">Desconto</span>
-            <select class="descTipo"><option value="%" ${d.tipo === '%' ? 'selected' : ''}>%</option><option value="R$" ${d.tipo === 'R$' ? 'selected' : ''}>R$</option></select>
-            <input class="descValor" inputmode="decimal" placeholder="0" value="${d.valor > 0 ? String(d.valor).replace('.', ',') : ''}">
-            <select class="descOrigem" title="Origem do desconto">
-              <option value="pessoal" ${d.origem !== 'zeleno' ? 'selected' : ''}>Pessoal</option>
-              <option value="zeleno" ${d.origem === 'zeleno' ? 'selected' : ''}>Zeleno</option>
-            </select>
-          </div>
+          <span>${q} × ${brl(p.preco)}</span>${descTxt}
         </div>
         <div class="valor">${brl(liquido)}</div>
-        <button class="tirar" title="Remover">✕</button>
       </div>`);
   }
   lista.innerHTML = linhas.join('');
-  lista.querySelectorAll('.tirar').forEach(b => b.addEventListener('click', ev => {
-    const id = ev.target.closest('.itemRev').dataset.id;
-    estado.carrinho.delete(id);
-    estado.descontos.delete(id);
-    if (!estado.carrinho.size) { irParaPasso(2); desenharProdutos(''); return; }
-    montarRevisao();
-  }));
-  lista.querySelectorAll('.itemRev').forEach(linha => {
-    const id = linha.dataset.id;
-    const aoMudar = () => {
-      const tipo = linha.querySelector('.descTipo').value;
-      const valor = lerValor(linha.querySelector('.descValor').value);
-      const origem = linha.querySelector('.descOrigem').value;
-      if (valor > 0) estado.descontos.set(id, { tipo, valor, origem });
-      else estado.descontos.delete(id);
-      const p = estado.produtos.find(x => x.id === id);
-      const q = estado.carrinho.get(id) || 1;
-      linha.querySelector('.valor').textContent = brl((p.preco - descontoUnitario(p)) * q);
-      linha.classList.toggle('comDesconto', valor > 0);
-      atualizarTotaisRevisao();
-    };
-    linha.querySelector('.descTipo').addEventListener('change', aoMudar);
-    linha.querySelector('.descValor').addEventListener('input', aoMudar);
-    linha.querySelector('.descOrigem').addEventListener('change', aoMudar);
-  });
   $('#rotCapital').textContent = brl(FRETES.capital);
   $('#rotSedex').textContent = brl(FRETES.sedex);
   $('#rotExclusivo').textContent = brl(FRETES.exclusivo);
