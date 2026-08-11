@@ -112,15 +112,24 @@ img{display:block}
 .cabInfo span{display:block;font-size:12.5px;color:var(--tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .cabEditar{background:none;border:1.5px solid var(--linha);border-radius:999px;padding:7px 15px;font-size:13px;font-weight:700;color:var(--tinta-2);transition:.15s}
 .cabEditar:hover{border-color:var(--folha);color:var(--folha);background:var(--brotinho-2)}
-.docsCliente{display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-top:1.5px dashed var(--linha);
-  margin-top:11px;padding-top:11px}
-.docsRotulo{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
-.docChip{display:inline-flex;align-items:center;gap:6px;max-width:230px;background:var(--brotinho-2);
-  border:1.5px solid var(--linha);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;
-  color:var(--mata);text-decoration:none;transition:border-color .14s, background .14s}
-.docChip:hover{border-color:var(--folha);background:var(--brotinho)}
-.docChip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.docVazio{font-size:12.5px;color:var(--tinta-2)}
+.docsCliente{border-top:1.5px dashed var(--linha);margin-top:11px;padding-top:10px}
+.docsRotulo{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);margin-right:8px}
+.docsToggle{display:inline-flex;align-items:center;gap:7px;background:var(--brotinho-2);border:1.5px solid var(--linha);
+  border-radius:999px;padding:7px 15px;font-size:13px;font-weight:700;color:var(--mata);transition:.14s}
+.docsToggle:hover{border-color:var(--folha);background:var(--brotinho)}
+.docsToggle em{font-style:normal;background:var(--folha);color:#fff;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:800}
+.docsToggle .seta{color:var(--tinta-2);font-size:11px}
+.docsPainel{margin-top:11px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
+.docGrupo{background:#FBFCFA;border:1.5px solid var(--linha);border-radius:12px;padding:11px 12px}
+.docGrupoTitulo{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--folha);margin-bottom:7px}
+.docGrupoTitulo em{font-style:normal;color:var(--tinta-2);font-weight:700;margin-left:3px}
+.docLinha{display:flex;align-items:center;gap:8px;padding:7px 6px;border-radius:8px;text-decoration:none;color:var(--tinta);transition:background .12s}
+.docLinha:hover{background:var(--brotinho-2)}
+.docLinha + .docLinha{border-top:1px solid var(--linha)}
+.docIco{flex-shrink:0}
+.docNome{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docAbrir{flex-shrink:0;font-size:12px;font-weight:700;color:var(--folha)}
+.docVazio{.docVazio{font-size:12.5px;color:var(--tinta-2)}
 .fichaCliente{border-top:1.5px dashed var(--linha);padding-top:15px;margin-top:13px}
 .gradeFicha{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:560px){.gradeFicha{grid-template-columns:1fr}}
@@ -724,19 +733,45 @@ function iconeDoc(tipo) {
   if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(t)) return '🖼️';
   return '📎';
 }
+
+// separa os anexos por tipo de documento, pelo nome do arquivo
+function grupoDoDocumento(nome) {
+  const n = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/receita|prescri|medic/.test(n)) return 'Receitas';
+  if (/cnh|\brg\b|identidade|cpf|passaporte|habilita/.test(n)) return 'Identidade';
+  if (/comprovante|endereco|residencia|conta de|fatura/.test(n)) return 'Comprovantes';
+  return 'Outros';
+}
+
 function desenharDocumentos(docs) {
   const box = $('#docsCliente');
   if (!box) return;
+  box.classList.remove('escondido');
   if (!docs.length) {
-    box.classList.remove('escondido');
     box.innerHTML = '<span class="docsRotulo">Documentos</span><span class="docVazio">nenhum anexo no HubSpot</span>';
     return;
   }
-  box.classList.remove('escondido');
-  box.innerHTML = '<span class="docsRotulo">Documentos</span>' + docs.map(d => `
-    <a class="docChip" href="/api/arquivo?arquivo=${encodeURIComponent(d.id)}" target="_blank" rel="noopener" title="${escapeHtml(d.nome)}">
-      ${iconeDoc(d.tipo)} <span>${escapeHtml(d.nome)}</span>
-    </a>`).join('');
+  const grupos = { 'Receitas': [], 'Identidade': [], 'Comprovantes': [], 'Outros': [] };
+  for (const d of docs) grupos[grupoDoDocumento(d.nome)].push(d);
+  const corpo = Object.entries(grupos).filter(([, lista]) => lista.length).map(([titulo, lista]) => `
+    <div class="docGrupo">
+      <div class="docGrupoTitulo">${titulo} <em>${lista.length}</em></div>
+      ${lista.map(d => `
+        <a class="docLinha" href="/api/arquivo?arquivo=${encodeURIComponent(d.id)}" target="_blank" rel="noopener">
+          <span class="docIco">${iconeDoc(d.tipo)}</span>
+          <span class="docNome" title="${escapeHtml(d.nome)}">${escapeHtml(d.nome)}</span>
+          <span class="docAbrir">abrir ›</span>
+        </a>`).join('')}
+    </div>`).join('');
+  box.innerHTML = `
+    <button class="docsToggle" id="btnDocs">📎 Documentos <em>${docs.length}</em><span class="seta">▾</span></button>
+    <div class="docsPainel escondido" id="docsPainel">${corpo}</div>`;
+  $('#btnDocs').addEventListener('click', () => {
+    const p = $('#docsPainel');
+    const abrindo = p.classList.contains('escondido');
+    p.classList.toggle('escondido');
+    $('#btnDocs').querySelector('.seta').textContent = abrindo ? '▴' : '▾';
+  });
 }
 
 function atualizarCabecalhoCliente() {
