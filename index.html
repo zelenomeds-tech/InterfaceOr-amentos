@@ -251,22 +251,30 @@ img{display:block}
 .itemRev .tagDesc{display:inline-block;background:var(--brotinho);color:var(--mata);border-radius:999px;
   padding:2px 10px;font-size:11.5px;font-weight:700;margin-top:4px}
 
-.blocoFrete{background:var(--branco);border:1px solid var(--linha);border-radius:var(--raio);padding:17px;margin:16px 0 0;box-shadow:var(--sombra)}
-.cepVisor span{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-.cepStatus{font-size:13px;color:var(--tinta-2);margin-top:6px;min-height:18px}
+.blocoFrete{background:var(--branco);border:1px solid var(--linha);border-radius:var(--raio);padding:18px;margin:18px 0 0;box-shadow:var(--sombra)}
+.entregaTopo{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}
+.entregaTopo .rotuloBloco{margin-bottom:0}
+.entregaCep{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.cepVisor{font-family:var(--display);font-weight:700;font-size:15px;color:var(--mata);font-variant-numeric:tabular-nums}
+.cepStatus{font-size:12.5px;color:var(--tinta-2)}
 .cepStatus.ok{color:var(--folha);font-weight:700}
 .cepStatus.ruim{color:var(--erro);font-weight:700}
-.opcoesFrete{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-@media(max-width:640px){.opcoesFrete{grid-template-columns:1fr}}
-.opFrete{display:flex;align-items:center;gap:10px;border:1px solid var(--linha);border-radius:13px;padding:12px 14px;cursor:pointer;transition:border-color .15s, background .15s, box-shadow .15s}
+.opcoesFrete{display:flex;flex-direction:column;gap:8px}
+.opFrete{display:flex;align-items:center;gap:12px;border:1px solid var(--linha);border-radius:12px;padding:12px 15px;cursor:pointer;
+  transition:border-color .15s, background .15s, box-shadow .15s}
 .opFrete:hover{border-color:var(--linha-2)}
-.opFrete:has(input:checked){border-color:var(--folha);background:var(--brotinho);box-shadow:0 6px 14px rgba(46,125,91,.14)}
-.opFrete input{accent-color:var(--folha);width:18px;height:18px}
-.opFrete .opTexto b{display:block;font-size:14px;font-weight:800}
-.opFrete .opTexto small{font-size:13px;color:var(--tinta-2);font-variant-numeric:tabular-nums}
-
-.ajustes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
-@media(max-width:560px){.ajustes{grid-template-columns:1fr}}
+.opFrete:has(input:checked){border-color:var(--folha);background:var(--brotinho-2);box-shadow:0 4px 12px rgba(46,125,91,.1)}
+.opFrete input{appearance:none;-webkit-appearance:none;width:19px;height:19px;margin:0;border:2px solid var(--linha-2);border-radius:50%;flex-shrink:0;transition:border .14s;cursor:pointer}
+.opFrete input:checked{border:6px solid var(--folha)}
+.opFrete .opTexto{flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.opFrete .opTexto b{font-size:14px;font-weight:700}
+.opFrete .opTexto small{font-family:var(--display);font-size:14.5px;font-weight:700;color:var(--mata);font-variant-numeric:tabular-nums}
+.entregaValor{display:flex;align-items:center;justify-content:flex-end;gap:11px;border-top:1px dashed var(--linha);margin-top:13px;padding-top:13px}
+.entregaValor label{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
+.campoValor{display:inline-flex;align-items:center;border:1px solid var(--linha);border-radius:11px;background:#FDFDFC;overflow:hidden;transition:border-color .14s}
+.campoValor:focus-within{border-color:var(--folha)}
+.campoValor i{font-style:normal;font-size:13px;font-weight:700;color:var(--tinta-2);padding:0 4px 0 12px}
+.campoValor input{border:none;background:none;width:92px;padding:11px 12px 11px 4px;font-size:15px;font-variant-numeric:tabular-nums;outline:none}
 
 .caixaTotais{position:relative;overflow:hidden;background:linear-gradient(155deg, var(--mata-3), var(--mata) 55%, var(--mata-2));color:#fff;border-radius:var(--raio);padding:20px;margin-top:8px;box-shadow:var(--sombra-alta)}
 .caixaTotais::after{content:'';position:absolute;right:-70px;top:-70px;width:230px;height:230px;border-radius:50%;background:radial-gradient(circle, #ffffff12, transparent 65%)}
@@ -410,20 +418,20 @@ table.docItens td b{font-variant-numeric:tabular-nums}
    USABILIDADE v4
    ============================================================ */
 /* vitrine de categorias */
-.gradeCats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:11px}
-.catCard{display:flex;flex-direction:column;align-items:flex-start;gap:3px;position:relative;text-align:left;
-  background:var(--branco);border:1px solid var(--linha);border-radius:var(--raio);padding:18px 18px 16px;
+.gradeCats{display:flex;flex-direction:column;gap:10px}
+.catCard{display:flex;align-items:center;gap:15px;width:100%;text-align:left;position:relative;
+  background:var(--branco);border:1px solid var(--linha);border-radius:var(--raio);padding:15px 18px;
   transition:border-color .16s, box-shadow .16s, transform .16s;cursor:pointer}
-.catCard:hover{border-color:var(--folha);box-shadow:var(--sombra);transform:translateY(-2px)}
-.catCard .catIco{width:38px;height:38px;border-radius:11px;background:var(--brotinho-2);color:var(--folha);
-  display:flex;align-items:center;justify-content:center;margin-bottom:9px;transition:background .16s,color .16s}
-.catCard .catIco svg{width:21px;height:21px}
+.catCard:hover{border-color:var(--folha);box-shadow:var(--sombra);transform:translateY(-1px)}
+.catCard .catIco{width:44px;height:44px;border-radius:12px;background:var(--brotinho-2);color:var(--folha);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .16s,color .16s}
+.catCard .catIco svg{width:23px;height:23px}
 .catCard:hover .catIco{background:var(--folha);color:#fff}
-.catCard b{font-family:var(--display);font-weight:800;font-size:18px;color:var(--mata)}
-.catCard span{font-size:12.5px;color:var(--tinta-2)}
-.catCard em{position:absolute;right:15px;top:50%;transform:translateY(-50%);font-style:normal;
-  font-size:20px;color:var(--folha);transition:transform .16s}
-.catCard:hover em{transform:translateY(-50%) translateX(3px)}
+.catTx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.catTx b{font-family:var(--display);font-weight:800;font-size:18px;color:var(--mata);letter-spacing:-.01em}
+.catTx span{font-size:12.5px;color:var(--tinta-2)}
+.catCard em{font-style:normal;font-size:22px;color:var(--linha-2);transition:transform .16s,color .16s;flex-shrink:0}
+.catCard:hover em{transform:translateX(3px);color:var(--folha)}
 .catTopo{display:flex;align-items:center;gap:11px;margin-bottom:11px}
 .catTopo button{border:1px solid var(--linha);background:var(--branco);border-radius:999px;
   padding:7px 14px;font-size:13px;font-weight:700;color:var(--folha);transition:.14s}
@@ -478,9 +486,6 @@ table.docItens td b{font-variant-numeric:tabular-nums}
 .cupom.cupomOculto{transform:translateY(115%)}
 
 /* card Entrega unificado */
-.rotuloBloco{font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--folha);margin-bottom:12px}
-.entregaGrade{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
-@media(max-width:560px){.entregaGrade{grid-template-columns:1fr}}
 
 /* ficha vira gaveta no celular */
 @media(max-width:640px){
@@ -568,14 +573,12 @@ table.docItens td b{font-variant-numeric:tabular-nums}
     <div id="gradeProdutos" class="gradeProdutos"><div class="carregando"><span class="aro"></span>Carregando produtos…</div></div>
 
     <div class="blocoFrete">
-      <div class="rotuloBloco">Entrega</div>
-      <div class="entregaGrade">
-        <div class="campo">
-          <label>CEP de entrega</label>
-          <div class="cepVisor"><span id="cepVisor">—</span><input id="inCep" type="hidden"></div>
-          <div class="cepStatus" id="cepStatus"></div>
+      <div class="entregaTopo">
+        <div class="rotuloBloco">Entrega</div>
+        <div class="entregaCep">
+          <span class="cepVisor"><span id="cepVisor">—</span></span><input id="inCep" type="hidden">
+          <span class="cepStatus" id="cepStatus"></span>
         </div>
-        <div class="campo"><label>Frete (R$)</label><input id="inFrete" inputmode="decimal" placeholder="0,00"></div>
       </div>
       <div class="opcoesFrete">
         <label class="opFrete" data-tipo="capital">
@@ -590,6 +593,10 @@ table.docItens td b{font-variant-numeric:tabular-nums}
           <input type="radio" name="tipoFrete" value="exclusivo">
           <span class="opTexto"><b>Exclusivo</b><small id="rotExclusivo"></small></span>
         </label>
+      </div>
+      <div class="entregaValor">
+        <label for="inFrete">Valor do frete</label>
+        <span class="campoValor"><i>R$</i><input id="inFrete" inputmode="decimal" placeholder="0,00"></span>
       </div>
     </div>
 
@@ -1013,8 +1020,7 @@ function desenharCategorias() {
   grade.innerHTML = '<div class="gradeCats">' + cats.map(([nome, n]) => `
     <button class="catCard" data-cat="${escapeHtml(nome)}">
       <span class="catIco">${iconeCategoria(nome)}</span>
-      <b>${escapeHtml(nome)}</b>
-      <span>${n} ${n === 1 ? 'produto' : 'produtos'}</span>
+      <span class="catTx"><b>${escapeHtml(nome)}</b><span>${n} ${n === 1 ? 'produto' : 'produtos'}</span></span>
       <em>›</em>
     </button>`).join('') + '</div>';
 }
