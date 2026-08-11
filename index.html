@@ -538,13 +538,6 @@ table.docItens td b{font-variant-numeric:tabular-nums}
       <input id="buscaProduto" type="search" placeholder="Buscar produto">
     </div>
     <div id="gradeProdutos" class="gradeProdutos"><div class="carregando"><span class="aro"></span>Carregando produtos…</div></div>
-  </div>
-
-  <!-- PASSO 3: REVISÃO -->
-  <div class="conteudo escondido" id="passoRevisao">
-    <h2 class="tituloSecao">Revisão</h2>
-    <p class="subSecao" id="revCliente"></p>
-    <div id="listaRevisao"></div>
 
     <div class="blocoFrete">
       <div class="rotuloBloco">Entrega</div>
@@ -556,7 +549,7 @@ table.docItens td b{font-variant-numeric:tabular-nums}
         </div>
         <div class="campo"><label>Frete (R$)</label><input id="inFrete" inputmode="decimal" placeholder="0,00"></div>
       </div>
-      <div class="opcoesFrete" id="opcoesFrete">
+      <div class="opcoesFrete">
         <label class="opFrete" data-tipo="capital">
           <input type="radio" name="tipoFrete" value="capital">
           <span class="opTexto"><b>Entrega SP capital</b><small id="rotCapital"></small></span>
@@ -571,6 +564,14 @@ table.docItens td b{font-variant-numeric:tabular-nums}
         </label>
       </div>
     </div>
+
+  </div>
+
+  <!-- PASSO 3: REVISÃO -->
+  <div class="conteudo escondido" id="passoRevisao">
+    <h2 class="tituloSecao">Revisão</h2>
+    <p class="subSecao" id="revCliente"></p>
+    <div id="listaRevisao"></div>
 
     <div class="caixaTotais">
       <div class="li"><span>Subtotal</span><span id="tSubtotal"></span></div>
@@ -679,6 +680,7 @@ function iniciarApp(d) {
   desenharOrcAnteriores(d.orcamentosAnteriores || []);
   jaTemOrcamentos = (d.orcamentosAnteriores || []).length;
   mostrarApp();
+  prepararEntrega();
   carregarProdutos();
   carregarReceita(false);
   irParaPasso(2);
@@ -746,6 +748,7 @@ function irParaPasso(n) {
   });
   $('#passoProdutos').classList.toggle('escondido', n !== 2);
   $('#passoRevisao').classList.toggle('escondido', n !== 3);
+  if (n === 2) prepararEntrega();
   atualizarCupom();
   if (n === 3) montarRevisao();
   window.scrollTo({ top: 0 });
@@ -1106,11 +1109,12 @@ function atualizarCupom() {
   if (estado.passo === 2) {
     if (!estado.carrinho.size) { cupom.classList.add('escondido'); return; }
     cupom.classList.remove('escondido');
-    const { descontos } = totaisAtuais();
+    const { descontos, frete, total } = totaisAtuais();
     const limite = subtotal * LIMITE_DESCONTO_PCT / 100;
     const estourou = descontos > limite + 0.005;
-    $('#cupomItens').textContent = qtdItens + (qtdItens === 1 ? ' item' : ' itens') + (descontos ? ' · desc. − ' + brl(descontos) : '');
-    $('#cupomTotal').textContent = brl(Math.max(0, subtotal - descontos));
+    $('#cupomItens').textContent = qtdItens + (qtdItens === 1 ? ' item' : ' itens')
+      + (descontos ? ' · desc. − ' + brl(descontos) : '') + (frete ? ' · frete ' + brl(frete) : '');
+    $('#cupomTotal').textContent = brl(total);
     const btn = $('#btnCupom');
     btn.disabled = estourou;
     btn.textContent = estourou ? 'Descontos acima de ' + LIMITE_DESCONTO_PCT + '% (máx ' + brl(limite) + ')' : 'Revisar orçamento';
@@ -1121,6 +1125,16 @@ function atualizarCupom() {
 $('#btnCupom').addEventListener('click', () => { if (estado.passo === 2) irParaPasso(3); });
 
 /* ---------- revisão ---------- */
+function prepararEntrega() {
+  $('#rotCapital').textContent = brl(FRETES.capital);
+  $('#rotSedex').textContent = brl(FRETES.sedex);
+  $('#rotExclusivo').textContent = brl(FRETES.exclusivo);
+  const cepFicha = $('#fCep').value;
+  if (cepFicha && $('#inCep').value !== cepFicha) { $('#inCep').value = cepFicha; consultarCep(); }
+  else if (cepFicha && !document.querySelector('input[name="tipoFrete"]:checked')) { consultarCep(); }
+  $('#cepVisor').textContent = $('#inCep').value || 'sem CEP no cadastro — toque em "editar" no cabeçalho para preencher';
+}
+
 function montarRevisao() {
   $('#revCliente').textContent = 'Orçamento para ' + ($('#fNome').value || 'o cliente') + ' · ' + estado.negocioSel.nome;
   const lista = $('#listaRevisao');
@@ -1144,13 +1158,6 @@ function montarRevisao() {
       </div>`);
   }
   lista.innerHTML = linhas.join('');
-  $('#rotCapital').textContent = brl(FRETES.capital);
-  $('#rotSedex').textContent = brl(FRETES.sedex);
-  $('#rotExclusivo').textContent = brl(FRETES.exclusivo);
-  const cepFicha = $('#fCep').value;
-  if (cepFicha && $('#inCep').value !== cepFicha) { $('#inCep').value = cepFicha; consultarCep(); }
-  else if (cepFicha && !document.querySelector('input[name="tipoFrete"]:checked')) { consultarCep(); }
-  $('#cepVisor').textContent = $('#inCep').value || 'sem CEP no cadastro — toque em "editar" no topo dos produtos para preencher';
   atualizarTotaisRevisao();
 }
 window.zSemMini = () => `<div class="miniSem">${semFotoSvg()}</div>`;
@@ -1221,7 +1228,7 @@ function atualizarTotaisRevisao() {
     aviso.classList.add('escondido');
   }
 }
-$('#inFrete').addEventListener('input', atualizarTotaisRevisao);
+$('#inFrete').addEventListener('input', () => { atualizarTotaisRevisao(); atualizarCupom(); });
 $('#btnVoltarProdutos').addEventListener('click', () => irParaPasso(2));
 
 /* ---------- gerar ---------- */
