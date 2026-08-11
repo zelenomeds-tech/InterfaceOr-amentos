@@ -101,6 +101,7 @@ async function propsProduto() {
   if (cachePropsProduto.dados && agora - cachePropsProduto.quando < 30 * 60 * 1000) return cachePropsProduto.dados;
   let propStatus = (process.env.PROP_STATUS_PRODUTO || '').trim();
   let propGrupo = (process.env.PROP_GRUPO_LIBERACAO || '').trim();
+  let propCategoria = (process.env.PROP_CATEGORIA_PRODUTO || '').trim();
   let valorAtivo = (process.env.VALOR_STATUS_ATIVO || '').trim();
   const r = await hs('/crm/v3/properties/products');
   const todas = r.results || [];
@@ -120,6 +121,16 @@ async function propsProduto() {
     const g = todas.find(p => normTexto(p.label).includes('grupo') && normTexto(p.label).includes('libera'));
     propGrupo = (g || {}).name || '';
   }
+  if (!propCategoria) {
+    const c = todas.find(p => normTexto(p.label) === 'categoria') || todas.find(p => normTexto(p.label).includes('categoria'));
+    propCategoria = (c || {}).name || '';
+  }
+  // rótulos das opções da Categoria (o valor interno pode diferir do rótulo)
+  const rotulosCategoria = {};
+  if (propCategoria) {
+    const pc = todas.find(x => x.name === propCategoria);
+    for (const o of ((pc && pc.options) || [])) rotulosCategoria[String(o.value)] = o.label;
+  }
   if (propStatus && !valorAtivo) {
     const p = todas.find(x => x.name === propStatus);
     const op = ((p && p.options) || []).find(o => ehRotuloAtivo(normTexto(o.label)));
@@ -129,7 +140,7 @@ async function propsProduto() {
   const candidatasStatus = todas
     .filter(p => normTexto(p.label).includes('status'))
     .map(p => ({ nomeInterno: p.name, rotulo: p.label, opcoes: (p.options || []).map(o => o.label) }));
-  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo, valorAtivo, candidatasStatus } };
+  cachePropsProduto = { quando: agora, dados: { propStatus, propGrupo, propCategoria, rotulosCategoria, valorAtivo, candidatasStatus } };
   return cachePropsProduto.dados;
 }
 
@@ -139,10 +150,11 @@ let cacheCatalogo = { quando: 0, dados: null };
 async function catalogoProdutos() {
   const agora = Date.now();
   if (cacheCatalogo.dados && agora - cacheCatalogo.quando < 10 * 60 * 1000) return cacheCatalogo.dados;
-  const { propStatus, propGrupo, valorAtivo } = await propsProduto();
+  const { propStatus, propGrupo, propCategoria, rotulosCategoria, valorAtivo } = await propsProduto();
   const propriedades = ['name', 'price', 'description', 'hs_sku', 'hs_images'];
   if (propStatus) propriedades.push(propStatus);
   if (propGrupo) propriedades.push(propGrupo);
+  if (propCategoria) propriedades.push(propCategoria);
   const produtos = [];
   let after = '';
   do {
@@ -167,6 +179,7 @@ async function catalogoProdutos() {
         categoria: grupo.includes('FLOR') ? 'flor' : grupo.includes('EXTRATO') ? 'extrato' : grupo.includes('OLEO') ? 'oleo' : null,
         dominancia: grupo.includes('_CBD') ? 'CBD' : grupo.includes('_THC') ? 'THC' : null,
         gramas: mg ? parseFloat(mg[1].replace(',', '.')) : 5,
+        categoriaLoja: propCategoria ? (rotulosCategoria[String(p[propCategoria] || '')] || String(p[propCategoria] || '')) : '',
       });
     }
     after = pag.paging?.next?.after || '';
