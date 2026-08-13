@@ -65,6 +65,16 @@ module.exports = async (req, res) => {
     // Cada etapa é blindada: se uma falhar (ex.: escopo de notas), as outras seguem.
     let documentos = [];
     {
+      // grupos canônicos do cadastro Zeleno
+      const grupoCanonico = texto => {
+        const n = String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        if (/receita|prescri/.test(n)) return 'Receita';
+        if (/termo|associativ|adesao/.test(n)) return 'Termo associativo';
+        if (/comprovante|endereco|residenc|fatura|conta de/.test(n)) return 'Comprovante de residência';
+        if (/\brg\b|cnh|identidad|cpf|passaporte|habilita|selfie|documento com foto|doc com foto/.test(n)) return 'Documento com foto';
+        return 'Outros anexos';
+      };
+      const ORDEM = ['Receita', 'Documento com foto', 'Comprovante de residência', 'Termo associativo', 'Outros anexos'];
       const grupos = new Map();
       const registrar = (titulo, valor) => {
         for (const bruto of String(valor || '').split(/[;,\s]+/)) {
@@ -76,8 +86,8 @@ module.exports = async (req, res) => {
       };
       // 1) grupos oficiais: propriedades de anexo do contato e do negócio
       try {
-        for (const p of propsAnexo.contacts) registrar(p.titulo, ct.properties?.[p.name]);
-        for (const p of propsAnexo.deals) registrar(p.titulo, neg.properties?.[p.name]);
+        for (const p of propsAnexo.contacts) registrar(grupoCanonico(p.titulo), ct.properties?.[p.name]);
+        for (const p of propsAnexo.deals) registrar(grupoCanonico(p.titulo), neg.properties?.[p.name]);
       } catch (e) { /* segue */ }
 
       // 2) anexos soltos das notas (se o token não tiver escopo de notas, só pula)
@@ -111,18 +121,11 @@ module.exports = async (req, res) => {
         } catch (e) { /* sem escopo de files ou arquivo apagado: pula este */ }
       }));
 
-      // 4) soltos classificados pelo nome do arquivo
-      const classificar = nome => {
-        const n = String(nome).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        if (/receita|prescri/.test(n)) return 'Receita';
-        if (/\brg\b|cnh|identidade|cpf|passaporte|habilita/.test(n)) return 'Identidade (RG/CNH)';
-        if (/comprovante|endereco|residencia|fatura|conta de/.test(n)) return 'Comprovante de endereço';
-        return 'Outros anexos';
-      };
+      // 4) soltos classificados pelo nome do arquivo, nos mesmos grupos canônicos
       for (const fid of soltos.slice(0, 12)) {
         const det = detalhes.get(fid);
         if (!det) continue;
-        const titulo = classificar(det.nome);
+        const titulo = grupoCanonico(det.nome);
         if (!grupos.has(titulo)) grupos.set(titulo, new Set());
         grupos.get(titulo).add(fid);
       }
@@ -131,8 +134,7 @@ module.exports = async (req, res) => {
         const itens = [...ids].map(fid => detalhes.get(fid)).filter(Boolean);
         if (itens.length) documentos.push({ grupo: titulo, itens });
       }
-      const peso = g => g === 'Outros anexos' ? 99 : ['Identidade (RG/CNH)', 'Comprovante de endereço'].includes(g) ? 50 : 0;
-      documentos.sort((a, b) => peso(a.grupo) - peso(b.grupo));
+      documentos.sort((a, b) => ORDEM.indexOf(a.grupo) - ORDEM.indexOf(b.grupo));
     }
 
     // orçamentos já existentes neste negócio (para o vendedor não duplicar sem saber)
