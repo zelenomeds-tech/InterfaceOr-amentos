@@ -94,25 +94,31 @@ module.exports = async (req, res) => {
       const soltos = [];
       try {
         const jaTem = new Set([...grupos.values()].flatMap(s => [...s]));
+        const notasBrutas = [];
         for (const [tipo, id] of [['contacts', contatoId], ['deals', negocioId]]) {
           const assocNotas = await hs('/crm/v3/objects/' + tipo + '/' + id + '/associations/notes');
-          const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 30);
-          if (!idsNotas.length) continue;
-          const notas = await hs('/crm/v3/objects/notes/batch/read', {
-            method: 'POST',
-            body: JSON.stringify({ inputs: idsNotas.map(i => ({ id: i })), properties: ['hs_attachment_ids', 'hs_timestamp'] }),
-          });
-          for (const n of (notas.results || []).sort((a, b) => String(b.properties?.hs_timestamp || '').localeCompare(String(a.properties?.hs_timestamp || '')))) {
-            for (const aid of String(n.properties?.hs_attachment_ids || '').split(';')) {
-              const limpo = aid.trim();
-              if (/^\d{5,}$/.test(limpo) && !jaTem.has(limpo) && !soltos.includes(limpo)) soltos.push(limpo);
-            }
+          const idsNotas = (assocNotas.results || []).map(a => String(a.id || a.toObjectId)).filter(Boolean).slice(0, 180);
+          // lote de leitura em blocos de 90 (limite do batch)
+          for (let i = 0; i < idsNotas.length; i += 90) {
+            const notas = await hs('/crm/v3/objects/notes/batch/read', {
+              method: 'POST',
+              body: JSON.stringify({ inputs: idsNotas.slice(i, i + 90).map(x => ({ id: x })), properties: ['hs_attachment_ids', 'hs_timestamp'] }),
+            });
+            notasBrutas.push(...(notas.results || []));
           }
         }
-      } catch (e) { /* sem escopo de notas: os grupos oficiais seguem valendo */ }
+        // PRIMEIRO ordena todas por data (novas na frente), SÓ DEPOIS corta
+        notasBrutas.sort((a, b) => String(b.properties?.hs_timestamp || '').localeCompare(String(a.properties?.hs_timestamp || '')));
+        for (const n of notasBrutas) {
+          for (const aid of String(n.properties?.hs_attachment_ids || '').split(';')) {
+            const limpo = aid.trim();
+            if (/^\d{5,}$/.test(limpo) && !jaTem.has(limpo) && !soltos.includes(limpo)) soltos.push(limpo);
+          }
+        }
+            } catch (e) { /* sem escopo de notas: os grupos oficiais seguem valendo */ }
 
       // 3) detalhes dos arquivos (cada um blindado; no máximo 20)
-      const todosIds = [...new Set([...[...grupos.values()].flatMap(s => [...s]), ...soltos])].slice(0, 20);
+      const todosIds = [...new Set([...[...grupos.values()].flatMap(s => [...s]), ...soltos])].slice(0, 24);
       const detalhes = new Map();
       await Promise.all(todosIds.map(async fid => {
         try {
@@ -122,7 +128,7 @@ module.exports = async (req, res) => {
       }));
 
       // 4) soltos classificados pelo nome do arquivo, nos mesmos grupos canônicos
-      for (const fid of soltos.slice(0, 12)) {
+      for (const fid of soltos.slice(0, 16)) {
         const det = detalhes.get(fid);
         if (!det) continue;
         const titulo = grupoCanonico(det.nome);
@@ -172,7 +178,7 @@ module.exports = async (req, res) => {
       negocio: { id: negocioId, nome: neg.properties?.dealname || '(sem nome)', etapaId },
       cliente,
       vendedor,
-      motorDocumentos: 'v3-canonico',
+      motorDocumentos: 'v4-funil',
       documentos,
       orcamentosAnteriores,
     });
