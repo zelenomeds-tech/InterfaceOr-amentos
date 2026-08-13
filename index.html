@@ -148,6 +148,14 @@ img{display:block}
 .receitaBanner.alerta{background:var(--ambar-fundo);border-color:var(--ambar-borda);color:var(--ambar-tinta)}
 .receitaBanner b{font-weight:800}
 .receitaBanner small{opacity:.85}
+.receitaBanner .btnAgendar{background:linear-gradient(180deg,var(--folha-viva),var(--folha));color:#fff;border:none;
+  border-radius:999px;padding:8px 17px;font-size:13px;font-weight:800;margin-left:8px;cursor:pointer;
+  box-shadow:0 5px 12px rgba(46,125,91,.3);transition:.14s}
+.receitaBanner .btnAgendar:hover:not(:disabled){box-shadow:0 7px 16px rgba(46,125,91,.4)}
+.receitaBanner .btnAgendar:disabled{opacity:.6}
+.receitaBanner .linkAgenda{margin-top:9px;font-size:13px;border-top:1px dashed var(--linha);padding-top:9px}
+.receitaBanner .copiarLink{background:none;border:1px solid currentColor;border-radius:999px;padding:4px 12px;
+  font-size:12px;font-weight:700;color:inherit;cursor:pointer;margin-left:4px}
 .receitaBanner .reler{background:none;border:none;padding:0;font-size:13px;font-weight:700;text-decoration:underline;color:inherit;margin-left:6px}
 
 /* ---------- BUSCA ---------- */
@@ -908,6 +916,25 @@ function toggleDetReceita() {
   if (b) b.textContent = abrindo ? 'menos detalhes' : 'detalhes';
 }
 
+async function abrirAgendaMedico() {
+  const btn = document.getElementById('btnAgendar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Buscando o médico…'; }
+  const j = await api('/api/agenda-link');
+  if (!j.ok) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Agendar consulta'; }
+    toast(j.erro || 'Não foi possível montar a agenda');
+    return;
+  }
+  window.open(j.url, '_blank');
+  if (btn) { btn.disabled = false; btn.textContent = 'Agendar consulta'; }
+  const box = document.getElementById('linkAgenda');
+  if (box) {
+    box.classList.remove('escondido');
+    box.innerHTML = 'Agenda de <b>' + escapeHtml(j.medico) + '</b> aberta em outra aba — ou envie o link ao paciente: '
+      + '<button class="copiarLink" onclick="navigator.clipboard.writeText(\'' + j.url.replace(/'/g, '') + '\').then(() => toast(\'Link copiado\'))">copiar link</button>';
+  }
+}
+
 function desenharBannerReceita() {
   const b = $('#receitaBanner');
   const r = estado.receita;
@@ -919,7 +946,9 @@ function desenharBannerReceita() {
     b.innerHTML = '⏳ Lendo a receita anexada de ' + escapeHtml(estado.contatoSel.nome.split(' ')[0]) + '… (só na primeira vez, depois fica salvo)';
   } else if (r.status === 'ok' && r.receitaVencida) {
     b.className = 'receitaBanner bloq';
-    b.innerHTML = '<b>Receita vencida.</b> Nenhum produto liberado — peça uma receita nova ao cliente.' + reler;
+    b.innerHTML = '<b>Receita vencida.</b> Nenhum produto liberado — agende a consulta de renovação com o médico responsável.'
+      + ' <button class="btnAgendar" id="btnAgendar" onclick="abrirAgendaMedico()">Agendar consulta</button>'
+      + reler + '<div class="linkAgenda escondido" id="linkAgenda"></div>';
   } else if (r.status === 'ok') {
     b.className = 'receitaBanner ok';
     b.innerHTML = '<b>Receita conferida</b>'
