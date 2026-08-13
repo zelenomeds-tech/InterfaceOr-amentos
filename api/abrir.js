@@ -70,7 +70,8 @@ module.exports = async (req, res) => {
         const n = String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         if (/receita|prescri/.test(n)) return 'Receita';
         if (/termo|associativ|adesao/.test(n)) return 'Termo associativo';
-        if (/comprovante|endereco|residenc|fatura|conta de/.test(n)) return 'Comprovante de residência';
+        if (/comprovante|endereco|residenc|fatura|conta de/.test(n)
+          || (/\bcompr?\b|\bcomp\./.test(n) && /\bend\b|\bend\.|resid/.test(n))) return 'Comprovante de residência';
         if (/\brg\b|cnh|identidad|cpf|passaporte|habilita|selfie|documento com foto|doc com foto/.test(n)) return 'Documento com foto';
         return 'Outros anexos';
       };
@@ -178,7 +179,7 @@ module.exports = async (req, res) => {
       negocio: { id: negocioId, nome: neg.properties?.dealname || '(sem nome)', etapaId },
       cliente,
       vendedor,
-      motorDocumentos: 'v4-funil',
+      motorDocumentos: 'v4.1-abreviacoes',
       documentos,
       orcamentosAnteriores,
     });
