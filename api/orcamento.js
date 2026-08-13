@@ -1,4 +1,4 @@
-const { CFG, sessaoDoRequest, hs, json, lerBody, catalogoProdutos, casarReceita } = require('./_lib.js');
+const { CFG, sessaoDoRequest, hs, json, lerBody, catalogoProdutos, casarReceita, propStatusReceita, statusReceitaVencida } = require('./_lib.js');
 
 // POST /api/orcamento
 // Corpo: { negocioId, contatoId, itens: [{produtoId, nome, preco, quantidade,
@@ -58,6 +58,16 @@ module.exports = async (req, res) => {
   // da receita salva, o servidor confere que todo produto está liberado e que a
   // soma de gramas por grupo não passa do limite prescrito.
   if (contatoId) {
+    // trava pela propriedade oficial "Status da receita"
+    try {
+      const prop = await propStatusReceita();
+      if (prop) {
+        const ctS = await hs('/crm/v3/objects/contacts/' + encodeURIComponent(contatoId) + '?properties=' + prop);
+        if (statusReceitaVencida(ctS.properties?.[prop])) {
+          return json(res, 400, { ok: false, erro: 'O Status da receita deste cliente no HubSpot está "' + (ctS.properties?.[prop] || 'vencida') + '" — agende a consulta de renovação antes de gerar.' });
+        }
+      }
+    } catch (e) { /* segue para a trava da leitura */ }
     try {
       const ct = await hs('/crm/v3/objects/contacts/' + encodeURIComponent(contatoId) + '?properties=receita_liberada');
       const rec = JSON.parse(ct.properties?.receita_liberada || 'null');
