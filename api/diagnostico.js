@@ -1,4 +1,4 @@
-const { CFG, hs, json, catalogoProdutos, produtosVendaveis, propriedadesDeAnexo } = require('./_lib.js');
+const { CFG, hs, json, catalogoProdutos, produtosVendaveis, propriedadesDeAnexo, propStatusReceita } = require('./_lib.js');
 
 // GET /api/diagnostico — abre no navegador para conferir a instalação.
 // Mostra: variáveis, conexão com o HubSpot, quais e-mails da lista de login
@@ -28,6 +28,10 @@ module.exports = async (req, res) => {
         }
       }
       saida.hubspot.conectado = true;
+
+      // Propriedade oficial "Status da receita"
+      try { saida.statusReceita = { propriedadeDetectada: (await propStatusReceita()) || '⚠️ não encontrada' }; }
+      catch (e) { saida.statusReceita = 'erro: ' + e.message; }
 
       // Propriedades de anexo descobertas (grupos de documentos do cabeçalho)
       try {
