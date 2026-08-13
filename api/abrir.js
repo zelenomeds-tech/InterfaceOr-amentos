@@ -172,6 +172,7 @@ module.exports = async (req, res) => {
       negocio: { id: negocioId, nome: neg.properties?.dealname || '(sem nome)', etapaId },
       cliente,
       vendedor,
+      motorDocumentos: 'v3-canonico',
       documentos,
       orcamentosAnteriores,
     });
