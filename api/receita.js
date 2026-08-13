@@ -1,4 +1,4 @@
-const { sessaoDoRequest, catalogoProdutos, casarReceita, produtosVendaveis, json } = require('./_lib.js');
+const { sessaoDoRequest, catalogoProdutos, casarReceita, produtosVendaveis, hs, json, propStatusReceita, statusReceitaVencida } = require('./_lib.js');
 
 // GET /api/receita?contato=ID&negocio=ID&forcar=1
 // Chama o fluxo do n8n que baixa a(s) receita(s) anexada(s), lê com IA e
@@ -36,6 +36,22 @@ module.exports = async (req, res) => {
 
     // O n8n devolve o que a IA LEU na receita; quem decide o que libera é o
     // servidor, cruzando com o Grupo de Liberação do catálogo (regra fixa).
+    // PROPRIEDADE OFICIAL "Status da receita" no contato: vencida/inválida MANDA
+    try {
+      const prop = await propStatusReceita();
+      if (prop) {
+        const ct = await hs('/crm/v3/objects/contacts/' + encodeURIComponent(contato) + '?properties=' + prop);
+        if (statusReceitaVencida(ct.properties?.[prop])) {
+          return json(res, 200, {
+            ok: true, status: 'ok', receitaVencida: true,
+            resumo: 'Status da receita no HubSpot: ' + (ct.properties?.[prop] || 'vencida'),
+            itensReceita: [], liberados: [], grupos: [],
+            observacoes: 'Bloqueio pela propriedade oficial do contato (Status da receita).',
+          });
+        }
+      }
+    } catch (e) { /* propriedade indisponível: segue pela leitura da IA */ }
+
     if (corpo.ok && corpo.status === 'ok' && Array.isArray(corpo.itensReceita)) {
       const { produtos } = await catalogoProdutos();
       // mesma válvula do /api/produtos: se o filtro de Status zerar, usa todos
