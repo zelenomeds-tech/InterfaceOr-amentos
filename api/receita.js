@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
     try {
       const prop = await propStatusReceita();
       if (prop) {
-        const ct = await hs('/crm/v3/objects/contacts/' + encodeURIComponent(contato) + '?properties=' + prop);
+        const ct = await hs('/crm/v3/objects/contacts/' + encodeURIComponent(contatoId) + '?properties=' + prop);
         if (statusReceitaVencida(ct.properties?.[prop])) {
           return json(res, 200, {
             ok: true, status: 'ok', receitaVencida: true,
