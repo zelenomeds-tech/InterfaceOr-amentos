@@ -189,6 +189,32 @@ async function catalogoProdutos() {
   return cacheCatalogo.dados;
 }
 
+// ---------- STATUS DA RECEITA (propriedade oficial do contato) ----------
+// Se o HubSpot diz que a receita está vencida/inválida, isso MANDA sobre a
+// leitura da IA. Detecta a propriedade pelo rótulo ("Status da receita");
+// cravável com PROP_STATUS_RECEITA na Vercel.
+let cacheStatusReceita = { quando: 0, dados: null };
+async function propStatusReceita() {
+  const agora = Date.now();
+  if (cacheStatusReceita.dados && agora - cacheStatusReceita.quando < 30 * 60 * 1000) return cacheStatusReceita.dados;
+  let nome = (process.env.PROP_STATUS_RECEITA || '').trim();
+  if (!nome) {
+    const r = await hs('/crm/v3/properties/contacts');
+    const p = (r.results || []).find(x => {
+      const rot = normTexto(x.label);
+      return rot.includes('status') && rot.includes('receita');
+    });
+    nome = (p || {}).name || '';
+  }
+  cacheStatusReceita = { quando: agora, dados: nome };
+  return nome;
+}
+// vencida/inválida em qualquer grafia
+function statusReceitaVencida(valor) {
+  const v = normTexto(valor);
+  return v.includes('vencid') || v.includes('invalid');
+}
+
 // ---------- PROPRIEDADES DE ANEXO (documentos por tipo) ----------
 // Descobre nas propriedades de contato e de negócio as que guardam anexos
 // (rótulo ou nome com "anexo"). Cada uma vira um grupo de documentos com o
@@ -289,4 +315,4 @@ function casarReceita(itensReceita, produtos) {
   return { liberados, grupos: Object.values(grupos) };
 }
 
-module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita, produtosVendaveis, propriedadesDeAnexo };
+module.exports = { CFG, crypto, sessaoDoRequest, setCookieSessao, limparCookieSessao, hs, json, lerBody, catalogoProdutos, casarReceita, produtosVendaveis, propriedadesDeAnexo, propStatusReceita, statusReceitaVencida };
