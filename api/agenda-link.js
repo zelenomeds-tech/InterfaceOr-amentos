@@ -12,7 +12,7 @@ async function propriedadeMedico() {
     const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const r = await hs('/crm/v3/properties/contacts');
     const candidatas = (r.results || []).filter(p => norm(p.label).includes('medico'));
-    const exata = candidatas.find(p => norm(p.label).includes('respons'));
+    const exata = candidatas.find(p => norm(p.label).includes('vincul')) || candidatas.find(p => norm(p.label).includes('respons'));
     nome = (exata || candidatas[0] || {}).name || '';
   }
   cachePropMedico = { quando: agora, nome };
